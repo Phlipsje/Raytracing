@@ -1,37 +1,27 @@
+using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
+using SixLabors.ImageSharp.Processing;
 
 namespace OpenTK
 {
     class RayTracer
     {
-        // member variables
-        public Surface screen;
         // constructor
         public RayTracer(Surface screen)
         {
-            this.screen = screen;
+            
         }
         // initialize
         public void Init()
         {
-            
+            ScreenHelper.Resize(1280, 720);
         }
         // tick: renders one frame
         public void Tick()
         {
-            screen.Clear(0);
-            screen.Print("hello world", 2, 2, 0xffffff);
-            screen.Line(2, 20, 160, 20, 0xff0000);
+            ScreenHelper.Clear();
         }
 
-        /// <summary>
-        /// Dit is een ding
-        /// </summary>
-        /// <param name="ding">bla bla</param>
-        /// <returns></returns>
-        public int Ding(int ding)
-        {
-            return ding;
-        }
+        
     }
 }

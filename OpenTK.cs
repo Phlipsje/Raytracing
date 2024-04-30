@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -78,8 +79,10 @@ namespace OpenTK
             GL.ClearColor(0, 0, 0, 0);
             GL.Disable(EnableCap.DepthTest);
             Surface screen = new(ClientSize.X, ClientSize.Y);
+            Surface.openTKApplication = this;
             app = new RayTracer(screen);
-            screenID = app.screen.GenTexture();
+            ScreenHelper.Initialize(screen, new Vector2(10, 10));
+            screenID = ScreenHelper.screen.GenTexture();
             if (allowPrehistoricOpenGL)
             {
                 GL.Enable(EnableCap.Texture2D);
@@ -188,9 +191,9 @@ namespace OpenTK
             {
                 GL.BindTexture(TextureTarget.Texture2D, screenID);
                 GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
-                               app.screen.width, app.screen.height, 0,
+                               ScreenHelper.screen.width, ScreenHelper.screen.height, 0,
                                PixelFormat.Bgra,
-                               PixelType.UnsignedByte, app.screen.pixels
+                               PixelType.UnsignedByte, ScreenHelper.screen.pixels
                              );
                 // draw screen filling quad
                 if (allowPrehistoricOpenGL)

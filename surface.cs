@@ -14,6 +14,7 @@ namespace OpenTK
         public int[] pixels;
         static Surface? font;
         static int[]? fontRedir;
+        public static OpenTKApp openTKApplication;
         // surface constructor
         public Surface(int w, int h)
         {

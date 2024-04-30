@@ -1,0 +1,12 @@
+using OpenTK.Mathematics;
+
+namespace OpenTK.SceneElements;
+
+/// <summary>
+/// A ray (so line with starting point)
+/// </summary>
+public class Ray
+{
+    public Vector3 Origin { get; set; }
+    public Vector3 Direction { get; set; } //Should be a normal vector
+}
