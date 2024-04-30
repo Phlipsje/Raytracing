@@ -1,11 +1,11 @@
-namespace Template
+namespace OpenTK
 {
-    class MyApplication
+    class RayTracer
     {
         // member variables
         public Surface screen;
         // constructor
-        public MyApplication(Surface screen)
+        public RayTracer(Surface screen)
         {
             this.screen = screen;
         }

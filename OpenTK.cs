@@ -20,7 +20,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 // tutorial. After the tutorial you can throw away this template code, or modify it at
 // will, or maybe it simply suits your needs.
 
-namespace Template
+namespace OpenTK
 {
     public class OpenTKApp : GameWindow
     {
@@ -41,7 +41,7 @@ namespace Template
         public const bool allowPrehistoricOpenGL = false;
 
         int screenID;            // unique integer identifier of the OpenGL texture
-        MyApplication? app;      // instance of the application
+        RayTracer? app;      // instance of the application
         bool terminated = false; // application terminates gracefully when this is true
 
         // The following variables are only needed in Modern OpenGL
@@ -76,7 +76,7 @@ namespace Template
             GL.ClearColor(0, 0, 0, 0);
             GL.Disable(EnableCap.DepthTest);
             Surface screen = new(ClientSize.X, ClientSize.Y);
-            app = new MyApplication(screen);
+            app = new RayTracer(screen);
             screenID = app.screen.GenTexture();
             if (allowPrehistoricOpenGL)
             {

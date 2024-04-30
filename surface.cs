@@ -2,8 +2,11 @@
 using SixLabors.ImageSharp.PixelFormats;
 using OpenTK.Graphics.OpenGL;
 
-namespace Template
+namespace OpenTK
 {
+    /// <summary>
+    /// The drawing on the screen
+    /// </summary>
     public class Surface
     {
         public int width, height;
