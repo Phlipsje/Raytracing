@@ -9,4 +9,5 @@ public class Ray
 {
     public Vector3 Origin { get; set; }
     public Vector3 Direction { get; set; } //Should be a normal vector
+    public Color4 Color { get; set; }
 }
