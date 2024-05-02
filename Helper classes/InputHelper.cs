@@ -1,3 +1,5 @@
+using OpenTK.Windowing.GraphicsLibraryFramework;
+
 namespace OpenTK.Helper_classes;
 
 /// <summary>
@@ -5,5 +7,5 @@ namespace OpenTK.Helper_classes;
 /// </summary>
 public static class InputHelper
 {
-    
+    public static KeyboardState keyBoard;
 }
