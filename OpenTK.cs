@@ -173,8 +173,8 @@ namespace OpenTK
         {
             base.OnUpdateFrame(e);
             // called once per frame; app logic
-            var keyboard = KeyboardState;
-            if (keyboard[Keys.Escape]) terminated = true;
+            InputHelper.keyBoard = KeyboardState;
+            if (InputHelper.keyBoard[Keys.Escape]) terminated = true;
         }
         protected override void OnRenderFrame(FrameEventArgs e)
         {
