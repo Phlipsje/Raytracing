@@ -1,3 +1,4 @@
+using INFOGR2024Template.Scenes;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
@@ -9,6 +10,7 @@ namespace OpenTK
         private CameraMode cameraMode = CameraMode.Raytracing;
         private Camera camera; //This is temp
         
+        IScene scene;
         // constructor
         public RayTracer()
         {
@@ -25,6 +27,7 @@ namespace OpenTK
         public void Tick()
         {
             ScreenHelper.Clear();
+            scene.Tick();
             switch (cameraMode)
             {
                 case CameraMode.Debug2D:
