@@ -1,3 +1,4 @@
+using INFOGR2024Template;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -7,6 +8,7 @@ public class Sphere : IPrimitive
     public Vector3 Center { get; set; }
     public float Radius { get; set; }
     public Material Material { get; set; }
+    
     public Sphere(Vector3 center, float radius, Material material)
     {
         Center = center;

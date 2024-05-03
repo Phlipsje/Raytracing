@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace INFOGR2024Template.Materials
+namespace INFOGR2024Template
 {
     /// <summary>
     /// A material handles the logic of what happens on a collision.
