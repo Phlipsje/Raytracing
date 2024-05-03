@@ -12,8 +12,8 @@ namespace INFOGR2024Template.Scenes
     /// </summary>
     public interface IScene
     {
-        public List<IPrimitive> primitives { get; }
-        public Camera camera { get; }
+        public List<IPrimitive> primitives { get; set; }
+        public Camera camera { get; set; }
 
         public void Tick();
     }
