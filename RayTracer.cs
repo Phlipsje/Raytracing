@@ -8,14 +8,12 @@ namespace OpenTK
     class RayTracer
     {
         private CameraMode cameraMode = CameraMode.Raytracing;
-        private Camera camera; //This is temp
-        
-        IScene scene;
+        private Camera camera => scene.camera;
+        private IScene scene;
         // constructor
         public RayTracer()
         {
-            camera = new Camera();
-            camera.SetViewDirection(0.6f, -0.2f, 1);
+            scene = new TestScene1();
         }
         // initialize
         public void Init()
