@@ -10,6 +10,7 @@ namespace INFOGR2024Template.Materials
 {
     public class Material
     {
+        public Material() { }
         public Color4 Color { get; set; } //The color of a Material.
         public Color4 OnCollision(Vector3 impactPoint, float angle)//The function called upon collision
         {
