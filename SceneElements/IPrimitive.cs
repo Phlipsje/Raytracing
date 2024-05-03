@@ -1,3 +1,4 @@
+using INFOGR2024Template;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -11,10 +12,6 @@ public interface IPrimitive
     
     public Material Material { get; set; } //The material of a primitive
     public Tuple<float, Material> RayIntersect(Ray ray); //If a ray hits this primitive (return scalar of ray direction (negative means not hit))
+    
 }
 
-//The type of surface a primitive is
-public enum Material
-{
-    Metallic,
-}
