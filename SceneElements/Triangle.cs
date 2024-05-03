@@ -20,7 +20,6 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 PointA => Center + VectorA;
         public Vector3 PointB => Center + VectorB;
         public Vector3 PointC => Center + VectorC;
-        public Color4 Color { get; set; }
         public Material Material { get; set; }
 
         /// <summary>
@@ -31,7 +30,7 @@ namespace INFOGR2024Template.SceneElements
         /// <param name="PointC"></param>
         /// <param name="color"></param>
         /// <param name="material"></param>
-        public Triangle(Vector3 PointA, Vector3 PointB, Vector3 PointC, Color4 color, Material material)
+        public Triangle(Vector3 PointA, Vector3 PointB, Vector3 PointC, Material material)
         {
             Center = (PointA + PointB + PointC) / 3;
             VectorA = PointA - Center;
@@ -39,7 +38,6 @@ namespace INFOGR2024Template.SceneElements
             VectorC = PointC - Center;
             Vector3 cross = Vector3.Cross(PointB - PointA, PointC - PointA);
             Normal = cross / cross.Length;
-            Color = color;
             Material = material;
         }
         /*public Triangle(Vector3 center, Vector3 vecA, Vector3 vecB, Vector3 vecC, Color4 color, Material material)

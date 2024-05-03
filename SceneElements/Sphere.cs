@@ -6,13 +6,11 @@ public class Sphere : IPrimitive
 {
     public Vector3 Center { get; set; }
     public float Radius { get; set; }
-    public Color4 Color { get; set; }
     public Material Material { get; set; }
-    public Sphere(Vector3 center, float radius, Color4 color, Material material)
+    public Sphere(Vector3 center, float radius, Material material)
     {
         Center = center;
         Radius = radius;
-        Color = color;
         Material = material;
     }
 
