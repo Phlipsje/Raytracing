@@ -23,6 +23,14 @@ namespace INFOGR2024Template.SceneElements
         public Color4 Color { get; set; }
         public Material Material { get; set; }
 
+        /// <summary>
+        /// Create triangle based off of the 3 vertex points
+        /// </summary>
+        /// <param name="PointA"></param>
+        /// <param name="PointB"></param>
+        /// <param name="PointC"></param>
+        /// <param name="color"></param>
+        /// <param name="material"></param>
         public Triangle(Vector3 PointA, Vector3 PointB, Vector3 PointC, Color4 color, Material material)
         {
             Center = (PointA + PointB + PointC) / 3;

@@ -20,6 +20,7 @@ public class Sphere : IPrimitive
     public float RayIntersect(Ray ray)
     {
         //note that the a in the discriminant is always 1 as the ray is normalised
+        //Algorithm for ABC formule
         Vector3 V = ray.Origin - Center;
         float b = 2 * (V.X + V.Y + V.Z);
         float c = MathF.Pow(ray.Origin.X + Center.X, 2) + MathF.Pow(ray.Origin.X + Center.X, 2) + MathF.Pow(ray.Origin.X + Center.X, 2) - MathF.Pow(Radius, 2);

@@ -13,7 +13,7 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 Center { get; set; }
         public Vector3 Normal { get; set; }
         public Color4 Color { get; set; }
-        public Material Material { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public Material Material { get; set; }
 
         public Plane(Vector3 center, Vector3 normal, Color4 color, Material material)
         {
