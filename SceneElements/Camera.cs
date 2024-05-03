@@ -43,7 +43,7 @@ public class Camera
         DistanceToCenter = 1f;
         Width = 1.6f;
         Height = 0.9f;
-        ViewDirection = new Vector3(0.5f, -0.5f, 0.5f);
+        ViewDirection = new Vector3(1f, -1f, 1f);
         ViewDirection.Normalize();
     }
     

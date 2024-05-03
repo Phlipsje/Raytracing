@@ -209,6 +209,15 @@ public static class ScreenHelper
         return new Vector2i(intX, intY);
     }
 
+    public static Vector2 PixelToCameraPlane(int x, int y, Camera camera)
+    {
+        float newX = (float)x / screen.width;
+        float newY = (float)y / screen.height;
+        newX = (newX - 0.5f) * camera.Width;
+        newY = (newY - 0.5f) * camera.Height;
+        return new Vector2(newX, newY);
+    }
+
     /// <summary>
     /// Converts a vector2 between -1 and 1 to the pixel position
     /// </summary>
