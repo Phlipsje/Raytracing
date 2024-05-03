@@ -48,22 +48,22 @@ namespace INFOGR2024Template.SceneElements
         {   
             to be added
         }*/
-        public float RayIntersect(Ray ray)
+        public Tuple<float, Material> RayIntersect(Ray ray)
         {
             float denominator = Vector3.Dot(ray.Direction, Normal);
             //if denominator is 0 then the vector is parallel and the ray will not hit.
             if (denominator == 0)
-                return float.MinValue;
+                return new Tuple<float, Material>(float.MinValue, Material);  
             float t = Vector3.Dot(Center - ray.Origin, Normal) / denominator;
             //the intersection can be ignored if it is behind the camera
             if (t <= 0)
-                return float.MinValue;
+                return new Tuple<float, Material>(float.MinValue, Material);
             Vector3 intersection = ray.Origin + t * ray.Direction;
             //the intersection can be ignored if the point lies outside the triangle
             if (Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0 
                 || Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0
                 || Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0)
-                return float.MinValue;
+                return new Tuple<float, Material>(float.MinValue, Material);
             return t;
         }
     }

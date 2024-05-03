@@ -20,12 +20,12 @@ namespace INFOGR2024Template.SceneElements
             Normal = normal;
             Material = material;
         }
-        public float RayIntersect(Ray ray)
+        public Tuple<float, Material> RayIntersect(Ray ray)
         {
             float denominator = Vector3.Dot(ray.Direction, Normal);
             if(denominator == 0)
-                return float.MinValue;
-            return Vector3.Dot(Center - ray.Origin, Normal) / denominator;
+                return new Tuple<float, Material>(float.MinValue, Material);
+            return new Tuple<float, Material>(Vector3.Dot(Center - ray.Origin, Normal) / denominator , Material);
         }
     }
 }

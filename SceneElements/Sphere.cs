@@ -15,7 +15,7 @@ public class Sphere : IPrimitive
     }
 
     //only works if ray.Direction is normalised (should be the case)
-    public float RayIntersect(Ray ray)
+    public Tuple<float, Material> RayIntersect(Ray ray)
     {
         //note that the a in the discriminant is always 1 as the ray is normalised
         //Algorithm for ABC formule
@@ -24,15 +24,15 @@ public class Sphere : IPrimitive
         float c = MathF.Pow(ray.Origin.X + Center.X, 2) + MathF.Pow(ray.Origin.X + Center.X, 2) + MathF.Pow(ray.Origin.X + Center.X, 2) - MathF.Pow(Radius, 2);
         float discriminant = MathF.Pow(b, 2) + 4 * c;
         if (discriminant < 0)
-            return float.MinValue;
+            return new Tuple<float, Material>( float.MinValue, Material);
         float rootOfDiscriminant = MathF.Sqrt(discriminant);
         float t1 = (-b + rootOfDiscriminant) / 2;
         float t2 = (-b - rootOfDiscriminant) / 2;
         if(t1 <= 0)
-            return float.MinValue;
+            return new Tuple<float, Material>(float.MinValue, Material);
         if (t2 <= 0)
-            return t1;
-        return t2;
+            return new Tuple<float, Material>(t1, Material);
+        return new Tuple<float, Material>(t2, Material);
 
 
     }
