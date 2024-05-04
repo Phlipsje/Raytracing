@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -12,16 +14,19 @@ public class Camera
     public float Width;
     public float Height;
     public Vector3 ViewDirection { get; private set; } //Unit vector, through center of camera plain
-    //Rotate around Y axis
-    public Vector3 RightDirection => new(ViewDirection.Z, ViewDirection.Y, -ViewDirection.X); //Unit vector
-    //Calculate with quaternion rotation because every other approach failed
+    
+    //previous calculation of Rightdirection was not watertight. Don't know if there is a way to calculate it as there seem to be infinite solutions to the dot product in 3d
+    public Vector3 RightDirection { get; private set; } //Unit vector
+
     public Vector3 UpDirection
     {
         get
         {
+            /* This method did not seem to work:
             Quaternion quat = Quaternion.FromEulerAngles(new Vector3(0.5f * (float)Math.PI, 0, 0));
             Vector3 vec = Vector3.Transform(ViewDirection, quat);
-            return vec;
+            return vec;*/
+            return Vector3.Cross(ViewDirection, RightDirection);
         }
     }  //Unit vector
     
@@ -35,6 +40,8 @@ public class Camera
                                           (RightDirection * Width / 2);
     public Vector3 BottomRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
                                          (RightDirection * Width / 2);
+    public Vector3 BottomLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) -
+                                         (RightDirection * Width / 2);
 
     //This will automatically focus on an object on (0,0,0)
     public Camera()
@@ -45,29 +52,37 @@ public class Camera
         Height = 0.9f;
         ViewDirection = new Vector3(1f, -1f, 1f);
         ViewDirection.Normalize();
+        //Rotate around Y axis
+        RightDirection = new Vector3(ViewDirection.Z, ViewDirection.Y, -ViewDirection.X);
     }
     
-    //Custom values
-    public Camera(Vector3 position, Vector3 viewDirection, float distanceToCenter, float width, float height)
+    /// <summary>
+    /// Constructs a camera with custom values, make sure viewDirection and rightDirection are orthogonal and oriented in the right way
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="viewDirection"></param>
+    /// <param name="rightDirection"></param>
+    /// <param name="distanceToCenter"></param>
+    /// <param name="width"></param>
+    /// <param name="height"></param>
+    public Camera(Vector3 position, Vector3 viewDirection, Vector3 rightDirection, float distanceToCenter, float width, float height)
     {
         Position = position;
-        ViewDirection = viewDirection;
-        ViewDirection.Normalize();
+        ViewDirection = viewDirection.Normalized();
+        RightDirection = rightDirection.Normalized();
         DistanceToCenter = distanceToCenter;
         Width = width;
         Height = height;
+        float dot = Vector3.Dot(ViewDirection, RightDirection);
+        if (dot < -0.01f || dot > 0.01f)
+        {
+            Debug.WriteLine("dot product of viewdirection and rightdirection is not near zero, dot:" + dot + ". Make sure they are orthogonal to form the right basis");
+        }
     }
 
-    public void SetViewDirection(Vector3 vector3)
+    public void SetDirection(Vector3 viewDirection, Vector3 rightDirection)
     {
-        vector3.Normalize();
-        ViewDirection = vector3;
-    }
-    
-    public void SetViewDirection(float x, float y, float z)
-    {
-        Vector3 vector3 = new(x, y, z);
-        vector3.Normalize();
-        ViewDirection = vector3;
+        ViewDirection = viewDirection.Normalized();
+        RightDirection = rightDirection.Normalized();
     }
 }

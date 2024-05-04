@@ -1,14 +1,17 @@
 using INFOGR2024Template.Scenes;
+using INFOGR2024Template;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
+using System.Diagnostics;
+using OpenTK.Graphics.ES11;
 
 namespace OpenTK
 {
     class RayTracer
     {
-        private CameraMode cameraMode = CameraMode.Raytracing;
-        private Camera camera => scene.camera;
+        private CameraMode cameraMode = CameraMode.Debug3D;
+        private Camera camera => scene.Camera;
         private IScene scene;
         // constructor
         public RayTracer()
@@ -18,7 +21,7 @@ namespace OpenTK
         // initialize
         public void Init()
         {
-            ScreenHelper.Resize(1280, 1280);
+            ScreenHelper.Resize(1280, 720);
             
         }
         // tick: renders one frame
@@ -122,7 +125,64 @@ namespace OpenTK
         #region Debug3D
         private void RenderDebug3D()
         {
-            
+            int width = ScreenHelper.screen.width;
+            int height = ScreenHelper.screen.height;
+            Camera camera = scene.Camera;
+            for (int x = 0; x < width; x++) 
+            {
+                for(int y = 0; y < height; y++)
+                {
+                    Vector3 bottomLeft = camera.BottomLeftCameraPlane;
+                    Vector3 bottomRight = camera.BottomRightCameraPlane;
+                    Vector3 topLeft = camera.TopLeftCameraPlane;
+                    Vector3 planePos = bottomLeft + ((float)x/width) * (bottomRight - bottomLeft) + ((float)y/height) * (topLeft - bottomLeft);
+                    Vector3 direction = planePos - camera.Position;
+                    Ray viewRay = new Ray(camera.Position, direction);
+                    for(int i = 0; i < scene.Primitives.Count; i++) 
+                    {
+                        Tuple<float, Material> tuple = scene.Primitives[i].RayIntersect(viewRay);
+                        if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
+                        {
+                            viewRay.T = tuple.Item1;
+                            viewRay.Color = tuple.Item2.Color;
+                        }
+                    }
+                    /*if (ray.T > 0)
+                        ScreenHelper.SetPixel(x, y, ray.Color);*/
+
+                    //testing with 'point light'
+                    if(viewRay.T > 0f)
+                    {
+                        Vector3[] lights = new Vector3[] { new Vector3(-10f, 5f, 0f), new Vector3(0f, 5f, 10f), new Vector3(-10f, 10f, 5f), new Vector3(5f, 10f, 5f)};
+                        float illumination = 0f;
+                        float lightIntensity = 1f / lights.Length;
+                        Vector3 hitPos = viewRay.Origin + viewRay.Direction * viewRay.T;
+                        for (int i = 0; i < lights.Length; i++) 
+                        {
+                            Ray shadowRay = new Ray(hitPos, lights[i] - hitPos);
+                            for (int p = 0; p < scene.Primitives.Count; p++)
+                            {
+                                Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
+                                if (tuple.Item1 > 0.001f)
+                                {
+                                    shadowRay.T = tuple.Item1;
+                                    break;
+                                }
+                            }
+                            if (shadowRay.T < 0f)
+                            {
+                                illumination += lightIntensity;
+                            }
+                        }
+                        if (illumination > 0f)
+                        {
+                            Color4 c = viewRay.Color;
+                            ScreenHelper.SetPixel(x, y, new Color4(c.R * illumination, c.G * illumination, c.B * illumination, 1f));
+                        }
+                    }
+                }
+            }
+            Debug.WriteLine("frame finished");
         }
         #endregion
 

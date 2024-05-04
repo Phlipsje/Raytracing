@@ -80,8 +80,8 @@ namespace OpenTK
             GL.Disable(EnableCap.DepthTest);
             Surface screen = new(ClientSize.X, ClientSize.Y);
             Surface.openTKApplication = this;
-            app = new RayTracer();
             ScreenHelper.Initialize(screen);
+            app = new RayTracer();
             screenID = ScreenHelper.screen.GenTexture();
             if (allowPrehistoricOpenGL)
             {
