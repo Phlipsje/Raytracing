@@ -64,7 +64,7 @@ namespace INFOGR2024Template.SceneElements
                 || Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0
                 || Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0)
                 return new Tuple<float, Material>(float.MinValue, Material);
-            return t;
+            return new Tuple<float, Material>(t, Material);
         }
     }
 }
