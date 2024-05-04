@@ -2,13 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenTK.Mathematics;
-using System.Text;
-using System.Threading.Tasks;
 using INFOGR2024Template.SceneElements;
-using OpenTK.SceneElements;
 using System.Globalization;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.Cryptography.X509Certificates;
 
 namespace INFOGR2024Template.Helper_classes
 {
