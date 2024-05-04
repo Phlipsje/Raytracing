@@ -153,13 +153,12 @@ namespace OpenTK
                     //testing with 'point light'
                     if(viewRay.T > 0f)
                     {
-                        Vector3[] lights = new Vector3[] { new Vector3(-10f, 5f, 0f), new Vector3(0f, 5f, 10f), new Vector3(-10f, 10f, 5f), new Vector3(5f, 10f, 5f)};
                         float illumination = 0f;
-                        float lightIntensity = 1f / lights.Length;
+                        float lightIntensity = 1f / scene.PointLights.Count;
                         Vector3 hitPos = viewRay.Origin + viewRay.Direction * viewRay.T;
-                        for (int i = 0; i < lights.Length; i++) 
+                        for (int l = 0; l < scene.PointLights.Count; l++) 
                         {
-                            Ray shadowRay = new Ray(hitPos, lights[i] - hitPos);
+                            Ray shadowRay = new Ray(hitPos, scene.PointLights[l] - hitPos);
                             for (int p = 0; p < scene.Primitives.Count; p++)
                             {
                                 Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
