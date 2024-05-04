@@ -1,3 +1,4 @@
+using INFOGR2024Template.Helper_classes;
 using INFOGR2024Template.Scenes;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;

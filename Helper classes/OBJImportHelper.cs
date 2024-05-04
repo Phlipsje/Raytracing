@@ -15,13 +15,13 @@ namespace INFOGR2024Template.Helper_classes
     public static class OBJImportHelper
     {
         /// <summary>
-        /// A method to import exactly one model from an obj file, only supports faces made up of 
+        /// Imports exactly one model from an obj file, only supports faces made up of three verticies 
         /// </summary>
         /// <param name="filePath"></param>The path to an obj file containing just one model.
         /// <param name="scale"></param>The factor the model will be scaled with.
         /// <param name="Position"></param>The position the model will be placed in.
         /// <returns></returns>
-        internal static Triangle[] ImportModel(string filePath, float scale, Vector3 Position, Color4 color, Material material)
+        internal static Triangle[] ImportModel(string filePath, float scale, Vector3 Position, Material material)
         {
             List<Triangle> triangles = new List<Triangle>();
             List<Vector3> verticies = new List<Vector3>();
@@ -46,7 +46,7 @@ namespace INFOGR2024Template.Helper_classes
                         Vector3 vertex1 = verticies[int.Parse(vertexIndexes[0]) - 1];
                         Vector3 vertex2 = verticies[int.Parse(vertexIndexes[1]) - 1];
                         Vector3 vertex3 = verticies[int.Parse(vertexIndexes[2]) - 1];
-                        triangles.Add(new Triangle(vertex1, vertex2, vertex3, color, material));
+                        triangles.Add(new Triangle(vertex1, vertex2, vertex3, material));
                     }
                 }
                 line = sr.ReadLine();
