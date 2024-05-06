@@ -22,7 +22,6 @@ namespace OpenTK
         public void Init()
         {
             ScreenHelper.Resize(1280, 720);
-            
         }
         // tick: renders one frame
         public void Tick()
@@ -154,13 +153,14 @@ namespace OpenTK
                     }
                     //The ray didn't hit so the rest can be skipped
                     if (viewRay.T < 0f)
-                        break;
+                        continue;
                     //if there are no point lights in the scene, immediately return the color without lighting
                     if (scene.PointLights.Count == 0)
                     {
                         ScreenHelper.SetPixel(x, y, viewRay.Color);
-                        break;
+                        continue;
                     }
+
                     //the illumination of the current pixel
                     float illumination = 0f;
                     //the intensity of each point light
@@ -169,13 +169,15 @@ namespace OpenTK
                     //for each light
                     for (int l = 0; l < scene.PointLights.Count; l++)
                     {
-                        Ray shadowRay = new Ray(hitPos, scene.PointLights[l] - hitPos);
+                        Vector3 lightPos = scene.PointLights[l];
+                        float distanceToLight = (lightPos - hitPos).Length;
+                        Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
                         //for each object
                         for (int p = 0; p < scene.Primitives.Count; p++)
                         {
                             //check if it is between the lamp and the light
                             Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
-                            if (tuple.Item1 > 0.001f)
+                            if (tuple.Item1 > 0.001f && tuple.Item1 < distanceToLight)
                             {
                                 shadowRay.T = tuple.Item1;
                                 break;

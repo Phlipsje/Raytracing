@@ -36,7 +36,5 @@ public class Sphere : IPrimitive
         if (t2 <= 0.001f)
             return new Tuple<float, Material>(t1, Material);
         return new Tuple<float, Material>(t2, Material);
-
-
     }
 }
