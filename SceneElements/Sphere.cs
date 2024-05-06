@@ -38,4 +38,15 @@ public class Sphere : IPrimitive
 
 
     }
+
+    public Vector3[] BoundingBox
+    {
+        get
+        {
+            Vector3[] vectors = new Vector3[2];
+            vectors[0] = new Vector3(Center.X - Radius, Center.Y - Radius, Center.Z - Radius);
+            vectors[1] = new Vector3(Center.X + Radius, Center.Y + Radius, Center.Z + Radius);
+            return vectors;
+        }
+    }
 }
