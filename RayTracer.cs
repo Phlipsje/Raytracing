@@ -4,13 +4,18 @@ using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 using System.Diagnostics;
-using OpenTK.Graphics.ES11;
+using OpenTK.Graphics.OpenGL;
+using System;
 
 namespace OpenTK
 {
     class RayTracer
     {
-        private CameraMode cameraMode = CameraMode.Debug3D;
+        int programID, vertexShaderID, fragmentShaderID;
+        int vbo_pos, vbo_col;
+        int attribute_vPosition, attribute_vColor;
+        int uniform_test;
+        private CameraMode cameraMode = CameraMode.OpenGL;
         private Camera camera => scene.Camera;
         private IScene scene;
         // constructor
@@ -22,12 +27,67 @@ namespace OpenTK
         public void Init()
         {
             ScreenHelper.Resize(1280, 720);
+
+            //load shaders
+            programID = GL.CreateProgram();
+            LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
+            LoadShader("../../../shaders/raytracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
+            GL.LinkProgram(programID);
+
+            //create vertex information for screen filling quad
+            float[] vertexData = new float[]
+            {
+                -1f, 1f, 0f,
+                1f, 1f, 0f,
+                -1f, -1f, 0f,
+                1f, 1f, 0f,
+                -1f, -1f, 0f,
+                1f, -1f, 0f
+                ,0f, 0f, 0f,
+                -0.5f, -0.5f, -0.5f,
+                0.5f, 0f, 0.5f
+            };
+            int verticies = 27;
+            float[] colorData = new float[verticies];
+            for (int i = 0; i < verticies; i++)
+            {
+                colorData[i] = 0.5f;
+            }
+            //gain access to input variables
+            attribute_vPosition = GL.GetAttribLocation(programID, "vPosition");
+            attribute_vColor = GL.GetAttribLocation(programID, "vColor");
+            uniform_test = GL.GetUniformLocation(programID, "test");
+
+            Debug.WriteLine(programID + ", " + attribute_vPosition + ", " + attribute_vColor + ", " + uniform_test);
+
+            // bind buffer for positions
+            vbo_pos = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ArrayBuffer, vbo_pos);
+            GL.BufferData<float>(BufferTarget.ArrayBuffer,
+             vertexData.Length * 4,
+            vertexData, BufferUsageHint.StaticDraw
+             );
+            GL.VertexAttribPointer(attribute_vPosition, 3,
+             VertexAttribPointerType.Float,
+            false, 0, 0
+             );
+            vbo_col = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ArrayBuffer, vbo_col);
+            GL.BufferData<float>(BufferTarget.ArrayBuffer,
+             colorData.Length * 4,
+            colorData, BufferUsageHint.StaticDraw
+             );
+            GL.VertexAttribPointer(attribute_vColor, 3,
+             VertexAttribPointerType.Float,
+            false, 0, 0
+             );
         }
         // tick: renders one frame
         public void Tick()
         {
             ScreenHelper.Clear();
             scene.Tick();
+
             switch (cameraMode)
             {
                 case CameraMode.Debug2D:
@@ -39,7 +99,22 @@ namespace OpenTK
                 case CameraMode.Raytracing:
                     RenderRaytracer();
                     break;
+                case CameraMode.OpenGL:
+                    //in this case actual rendering is handled by RenderGL()
+                    PrepareRenderOpenGL();
+                    break;
             }
+        }
+        //called by OpenTK class. The order is: Tick() first, and then Render()
+        public void RenderGL()
+        {
+            if(cameraMode == CameraMode.OpenGL)
+            {
+                //GL.UseProgram(programID);
+                GL.EnableVertexAttribArray(vbo_col);
+                GL.EnableVertexAttribArray(attribute_vPosition);
+                GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+            }    
         }
 
         #region Debug2D
@@ -209,12 +284,31 @@ namespace OpenTK
             
         }
         #endregion
+
+        #region OpenGL stuff
+        private void PrepareRenderOpenGL()
+        {
+            /*GL.UseProgram(programID);
+            GL.Uniform1(uniform_test, 0.5f);*/
+        }
+
+        void LoadShader(String name, ShaderType type, int program, out int ID)
+        {
+            ID = GL.CreateShader(type);
+            using (StreamReader sr = new StreamReader(name))
+                GL.ShaderSource(ID, sr.ReadToEnd());
+            GL.CompileShader(ID);
+            GL.AttachShader(program, ID);
+            Console.WriteLine(GL.GetShaderInfoLog(ID));
+        }
+        #endregion
     }
 
     enum CameraMode
     {
         Debug2D,
         Debug3D,
-        Raytracing
+        Raytracing,
+        OpenGL
     }
 }
