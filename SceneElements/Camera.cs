@@ -12,18 +12,8 @@ public class Camera
     public float Width;
     public float Height;
     public Vector3 ViewDirection { get; private set; } //Unit vector, through center of camera plain
-    //Rotate around Y axis
-    public Vector3 RightDirection => new(ViewDirection.Z, ViewDirection.Y, -ViewDirection.X); //Unit vector
-    //Calculate with quaternion rotation because every other approach failed
-    public Vector3 UpDirection
-    {
-        get
-        {
-            Quaternion quat = Quaternion.FromEulerAngles(new Vector3(0.5f * (float)Math.PI, 0, 0));
-            Vector3 vec = Vector3.Transform(ViewDirection, quat);
-            return vec;
-        }
-    }  //Unit vector
+    public Vector3 RightDirection { get; private set; } //Unit vector
+    public Vector3 UpDirection => Vector3.Cross(ViewDirection, RightDirection); //Unit vector
     
     public Vector3 ImagePlaneCenter => Position + DistanceToCenter * ViewDirection;
     public float FieldOfView => MathF.Acos(Height / 2 / DistanceToCenter) * 2;
@@ -43,8 +33,10 @@ public class Camera
         DistanceToCenter = 1f;
         Width = 1.6f;
         Height = 0.9f;
-        ViewDirection = new Vector3(1f, -1f, 1f);
+        ViewDirection = new Vector3(1f, 0f, 1f);
+        RightDirection = new Vector3(1f, 0, -1f);
         ViewDirection.Normalize();
+        RightDirection.Normalize();
     }
     
     //Custom values
@@ -64,10 +56,11 @@ public class Camera
         ViewDirection = vector3;
     }
     
-    public void SetViewDirection(float x, float y, float z)
+    public void SetViewDirection(Vector3 viewDirection, Vector3 rightDirection)
     {
-        Vector3 vector3 = new(x, y, z);
-        vector3.Normalize();
-        ViewDirection = vector3;
+        viewDirection.Normalize();
+        rightDirection.Normalize();
+        ViewDirection = viewDirection;
+        RightDirection = rightDirection;
     }
 }

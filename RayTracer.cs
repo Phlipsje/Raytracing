@@ -21,7 +21,7 @@ namespace OpenTK
         // initialize
         public void Init()
         {
-            ScreenHelper.Resize(1280, 1280);
+            ScreenHelper.Resize(768, 768);
             
         }
         // tick: renders one frame
@@ -49,19 +49,22 @@ namespace OpenTK
             Vector2 topLeftPlane = new Vector2(-5, -5);
             Vector2 bottomRightPlane = new Vector2(5, 5);
             ViewDirection viewDirection = ViewDirection.Topdown;
+            int linesPerCircle = 100;
+            int exampleRayCount = 10; //Minimum 2
 
             switch (viewDirection)
             {
                 case ViewDirection.Topdown:
-                    RenderDebugTopDown(topLeftPlane, bottomRightPlane);
+                    RenderDebugTopDown(topLeftPlane, bottomRightPlane, linesPerCircle, exampleRayCount);
                     break;
             }
         }
 
-        private void RenderDebugTopDown(Vector2 topLeftPlane, Vector2 bottomRightPlane)
+        private void RenderDebugTopDown(Vector2 topLeftPlane, Vector2 bottomRightPlane, int linesPerCircle, int exampleRayCount)
         {
             //Draw all primitives, drawn first to be drawn under the camera things
-            foreach (IPrimitive primitive in scene.primitives)
+            List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
+            foreach (var primitive in scene.primitives)
             {
                 //Don't draw planes
                 if (primitive.GetType() == typeof(Plane))
@@ -76,6 +79,11 @@ namespace OpenTK
                 if (primitive.BoundingBox[1].Z < topLeftPlane.Y) continue;
                 
                 //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            
+            foreach (IPrimitive primitive in primitivesToDraw)
+            {
                 if (primitive.GetType() == typeof(Triangle))
                 {
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.X, ((Triangle)primitive).PointA.Z),
@@ -87,20 +95,112 @@ namespace OpenTK
                 }
                 else if (primitive.GetType() == typeof(Sphere))
                 {
-                    int linesPerCircle = 100;
                     float radians = 0;
                     float radianIncrement = 2*MathF.PI / (float)linesPerCircle;
                     Vector2 center = new Vector2(primitive.Center.X, primitive.Center.Z);
                     float radius = ((Sphere)primitive).Radius;
                     for (int i = 0; i < linesPerCircle; i++)
                     {
-                        Console.WriteLine(ScaleToPixel(center.X + radius * MathF.Sin(radians), center.Y + radius * MathF.Cos(radians)));
                         ScreenHelper.DrawLine(ScaleToPixel(center.X + radius * MathF.Sin(radians), center.Y + radius * MathF.Cos(radians)),
                             ScaleToPixel(center.X + radius * MathF.Sin(radians+radianIncrement), 
                             center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.Color);
                         radians += radianIncrement;
                     }
                 }
+            }
+            
+            //Draw a few camera rays
+            Vector2 rayStartingPoint = new Vector2(camera.Position.X, camera.Position.Z);
+            Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
+            Vector2 leftSideCameraPlane = new Vector2(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Z);
+            Vector2 rightSideCameraPlane = new Vector2(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Z);
+            Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
+            for (int i = 0; i < exampleRayCount; i++)
+            {
+                Vector2 rayDirection = leftSideCameraPlane + increment * i - rayStartingPoint;
+                rayDirection.Normalize();
+
+                //Second point if nothing is hit
+                float closestT = 20f;
+                
+                //Search for primitive hit
+                foreach (IPrimitive primitive in primitivesToDraw)
+                {
+                    Vector2 center = new Vector2(primitive.Center.X, primitive.Center.Z);
+                    if (primitive.GetType() == typeof(Triangle))
+                    {
+                        Vector2 pointA = new Vector2(((Triangle)primitive).PointA.X, ((Triangle)primitive).PointA.Z);
+                        Vector2 pointB = new Vector2(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Z);
+                        Vector2 pointC = new Vector2(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Z);
+                        float t0 = IntersectLineWithRay(pointA, pointB);
+                        float t1 = IntersectLineWithRay(pointA, pointC);
+                        float t2 = IntersectLineWithRay(pointB, pointC);
+
+                        if (t0 > 0 && t0 < closestT)
+                            closestT = t0;
+                        else if (t1 > 0 && t1 < closestT)
+                            closestT = t1;
+                        else if (t2 > 0 && t2 < closestT)
+                            closestT = t2;
+                        
+                        float IntersectLineWithRay(Vector2 pointA, Vector2 pointB)
+                        {
+                            Vector2 lineSegmentDirection = pointB - pointA;
+                            float crossDirections = Cross2D(rayDirection, lineSegmentDirection);
+                            
+                            //If this happens, then we the lines are parallel and they don't intersect
+                            if(MathF.Abs(crossDirections) < 0.00001f)
+                                return float.MaxValue;
+
+                            if (Cross2D(pointA - rayStartingPoint, rayDirection) / crossDirections is >= 0 and <= 1)
+                            {
+                                float t = Cross2D(pointA - rayStartingPoint, lineSegmentDirection) / crossDirections;
+                                return t;
+                            }
+
+                            //Ray and line segment don't intersect
+                            return float.MaxValue;
+                        }
+
+                        float Cross2D(Vector2 v0, Vector2 v1)
+                        {
+                            return v0.X * v1.Y - v0.Y * v1.X;
+                        }
+                    }
+                    else if (primitive.GetType() == typeof(Sphere))
+                    {
+                        Vector2 positionDifference = rayStartingPoint - center;
+                        float b = 2 * (positionDifference.X * rayDirection.X + positionDifference.Y * rayDirection.Y);
+                        float c = MathF.Pow(positionDifference.X, 2) + MathF.Pow(positionDifference.Y, 2) - MathF.Pow(((Sphere)primitive).Radius, 2);
+                        float discriminant = b * b - 4 * c;
+                        
+                        if (discriminant < 0)
+                        {
+                            //Not closest positive t, so change nothing
+                        }
+                        else //1 or 2 solutions
+                        {
+                            float t1 = (-b + MathF.Sqrt(discriminant)) / 2;
+                            float t2 = (-b - MathF.Sqrt(discriminant)) / 2;
+                            if (t1 <= 0)
+                            {
+                                //No good value
+                            }
+                            else if(t2 <= 0.0001f)
+                            {
+                                closestT = MathF.Min(closestT, t1);
+                            }
+                            else
+                            {
+                                closestT = MathF.Min(closestT, t2);
+                            }
+                        }
+                    }
+                }
+                
+                //ClosestT gets changed depending on if and where ray intersects
+                Vector2 secondPoint = ScaleToBaseVectorByGivenPlane(rayStartingPoint + rayDirection * closestT);
+                ScreenHelper.DrawLine(pixelPositionRayStart, ScreenHelper.Vector2ToPixel(secondPoint), Color4.Yellow);
             }
             
             //Get camera info
@@ -131,18 +231,21 @@ namespace OpenTK
             ScreenHelper.DrawCircle(pixelPositionCamera.X, pixelPositionCamera.Y, 10, Color4.Yellow);
 
             //Draw view info text (Drawn last to be drawn on top of everything else)
-            ScreenHelper.screen.Print("2D debug mode", 3, 3, ColorHelper.ColorToInt(Color4.White));
-            ScreenHelper.screen.Print("X>>", 23, ScreenHelper.screen.height - 20, ColorHelper.ColorToInt(Color4.White));
-            ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 80, ColorHelper.ColorToInt(Color4.White));
-            ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 65, ColorHelper.ColorToInt(Color4.White));
-            ScreenHelper.screen.Print("Z", 3, ScreenHelper.screen.height - 50, ColorHelper.ColorToInt(Color4.White));
+            int white = ColorHelper.ColorToInt(Color4.White);
+            ScreenHelper.screen.Print("2D debug mode", 3, 3, white);
+            ScreenHelper.screen.Print($"({topLeftPlane.X},{bottomRightPlane.Y})", 3, ScreenHelper.screen.height- 20, white);
+            ScreenHelper.screen.Print($"({bottomRightPlane.X},{topLeftPlane.Y})", ScreenHelper.screen.width-70, 3, white);
+            ScreenHelper.screen.Print("X>>", 83, ScreenHelper.screen.height - 20, white);
+            ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 80, white);
+            ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 65, white);
+            ScreenHelper.screen.Print("Z", 3, ScreenHelper.screen.height - 50, white);
             
             Vector2 ScaleToBaseFloatsByGivenPlane(float x, float y)
             {
                 float width = MathF.Abs(bottomRightPlane.X - topLeftPlane.X);
                 float height = MathF.Abs(bottomRightPlane.Y - topLeftPlane.Y);
-                x /= width;
-                y /= height;
+                x /= width / 2;
+                y /= height / 2;
                 return new Vector2(x, y);
             }
             
@@ -150,8 +253,8 @@ namespace OpenTK
             {
                 float width = MathF.Abs(bottomRightPlane.X - topLeftPlane.X);
                 float height = MathF.Abs(bottomRightPlane.Y - topLeftPlane.Y);
-                vector.X /= width;
-                vector.Y /= height;
+                vector.X /= width / 2;
+                vector.Y /= height / 2;
                 return vector;
             }
 

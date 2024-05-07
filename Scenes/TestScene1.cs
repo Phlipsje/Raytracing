@@ -20,9 +20,11 @@ namespace INFOGR2024Template.Scenes
             {
                 new Sphere(new Vector3(1,1,1), 1, new Material(new Color4(1f,1f,1f,1))),
                 new Sphere(new Vector3(2,2,2), 0.2f, new Material(Color4.Red)),
-                new Triangle(new Vector3(0, 0, 0), new Vector3(2, 2, 2), new Vector3(3, 1, 2), new Material(Color4.Green))
+                new Triangle(new Vector3(0, 0, 0), new Vector3(2, 2, 2), new Vector3(3, 1, 2), new Material(Color4.Green)),
+                new Triangle(new Vector3(-2, 0, 1), new Vector3(2, 2, 2), new Vector3(0, 1, 3), new Material(Color4.Green))
             };
             camera = new Camera();
+            camera.SetViewDirection(new Vector3(1f, 0f, 1f), new Vector3(1f, 0f, -1f));
         }
         public void Tick()
         {
