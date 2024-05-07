@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Helper_classes;
@@ -41,7 +42,7 @@ namespace OpenTK
          * 
          * MacOS doesn't support prehistoric OpenGL anymore since 2018.
          */
-        public const bool allowPrehistoricOpenGL = false;
+        public const bool allowPrehistoricOpenGL = true;
 
         int screenID;        // unique integer identifier of the OpenGL texture
         RayTracer? app;      // instance of the application
@@ -135,16 +136,18 @@ namespace OpenTK
                 // send all the following draw calls through this pipeline
                 GL.UseProgram(programID);
                 // tell the VAO which part of the VBO data should go to each shader input
-                int location = GL.GetAttribLocation(programID, "vPosition");
-                GL.EnableVertexAttribArray(location);
-                GL.VertexAttribPointer(location, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
-                location = GL.GetAttribLocation(programID, "vUV");
-                GL.EnableVertexAttribArray(location);
-                GL.VertexAttribPointer(location, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+                int locationPos = GL.GetAttribLocation(programID, "vPosition");
+                GL.EnableVertexAttribArray(locationPos);
+                GL.VertexAttribPointer(locationPos, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+                int locationUV = GL.GetAttribLocation(programID, "vUV");
+                GL.EnableVertexAttribArray(locationUV);
+                GL.VertexAttribPointer(locationUV, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
                 // connect the texture to the shader uniform variable
                 GL.ActiveTexture(TextureUnit.Texture0);
                 GL.BindTexture(TextureTarget.Texture2D, screenID);
                 GL.Uniform1(GL.GetUniformLocation(programID, "pixels"), 0);
+
+                Debug.WriteLine(programID + ", " + locationPos + ", " + locationUV);
             }
             app.Init();
         }
@@ -188,7 +191,7 @@ namespace OpenTK
             {
                 //preperation code that used to be in OnLoad, yet it has to occur every frame according to practical 0 exercise
                 GL.ClearColor(0, 0, 0, 0);
-                if (allowPrehistoricOpenGL)
+                //if (allowPrehistoricOpenGL)
                     GL.Enable(EnableCap.Texture2D);
                 GL.Disable(EnableCap.DepthTest);
                 GL.Color3(1.0f, 1.0f, 1.0f);
@@ -214,6 +217,7 @@ namespace OpenTK
                     GL.Enable(EnableCap.DepthTest);
                     GL.Disable(EnableCap.Texture2D);
                     GL.Clear(ClearBufferMask.DepthBufferBit);
+                    GL.Clear(ClearBufferMask.ColorBufferBit);
                 }
                 else
                 {
