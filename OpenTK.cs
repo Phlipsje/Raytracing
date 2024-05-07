@@ -191,7 +191,7 @@ namespace OpenTK
             {
                 //preperation code that used to be in OnLoad, yet it has to occur every frame according to practical 0 exercise
                 GL.ClearColor(0, 0, 0, 0);
-                //if (allowPrehistoricOpenGL)
+                if (allowPrehistoricOpenGL)
                     GL.Enable(EnableCap.Texture2D);
                 GL.Disable(EnableCap.DepthTest);
                 GL.Color3(1.0f, 1.0f, 1.0f);
@@ -217,7 +217,6 @@ namespace OpenTK
                     GL.Enable(EnableCap.DepthTest);
                     GL.Disable(EnableCap.Texture2D);
                     GL.Clear(ClearBufferMask.DepthBufferBit);
-                    GL.Clear(ClearBufferMask.ColorBufferBit);
                 }
                 else
                 {

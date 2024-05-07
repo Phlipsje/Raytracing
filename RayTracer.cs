@@ -53,10 +53,12 @@ namespace OpenTK
             attribute_vPosition = GL.GetAttribLocation(programID, "vPosition");
             uniform_planes = GL.GetUniformLocation(programID, "planes");
             uniform_spheres = GL.GetUniformLocation(programID, "spheres");
-            uniform_planes = GL.GetUniformLocation(programID, "planes");
+            uniform_triangles = GL.GetUniformLocation(programID, "triangles");
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
 
+            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles);
+            Debug.WriteLine("max fragment uniform data size: "  +GL.GetInteger(GetPName.MaxFragmentUniformComponents));
             SendPrimitivesToShader();
 
             // bind buffer for positions
@@ -103,6 +105,7 @@ namespace OpenTK
                 //GL.UseProgram(programID);
                 GL.EnableVertexAttribArray(attribute_vPosition);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+                Debug.WriteLine("frame finished");
                 //Debug.WriteLine(GL.GetError());
             }    
         }
@@ -361,7 +364,7 @@ namespace OpenTK
                 else
                 {
                     Triangle triangle = (Triangle)primitive;
-                    int offset = 19 * planesCounter;
+                    int offset = 19 * trianglesCounter;
                     trianglesData[0 + offset] = triangle.PointA.X;
                     trianglesData[1 + offset] = triangle.PointA.Y;
                     trianglesData[2 + offset] = triangle.PointA.Z;

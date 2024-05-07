@@ -32,9 +32,9 @@ namespace INFOGR2024Template.Scenes
             PointLights = new List<Vector3>
             {
                 //new Vector3(-10f, 5f, 0f), 
-                new Vector3(0f, 5f, -10f), 
+                //new Vector3(0f, 5f, -10f), 
                 new Vector3(-10f, 10f, 5f), 
-                new Vector3(0f, 1f, 0f)
+                //new Vector3(0f, 1f, 0f)
             };
         }
         public void Tick()
