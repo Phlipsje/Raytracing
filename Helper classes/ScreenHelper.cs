@@ -105,7 +105,7 @@ public static class ScreenHelper
     {
         x = MathHelper.Clamp(x, 0, screen.width - 1);
         y = MathHelper.Clamp(y, 0, screen.height - 1);
-        screen.pixels[x + (screen.height - y) * screen.width] = ColorHelper.ColorToInt(color);
+        screen.pixels[x + (screen.height - 1 - y) * screen.width] = ColorHelper.ColorToInt(color);
     }
 
     /// <summary>
