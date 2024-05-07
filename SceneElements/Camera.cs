@@ -21,6 +21,8 @@ public class Camera
 
     public Vector3 TopLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (UpDirection * Height / 2) +
                                          (-RightDirection * Width / 2);
+    public Vector3 BottomLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
+                                         (-RightDirection * Width / 2);
     public Vector3 TopRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (UpDirection * Height / 2) +
                                           (RightDirection * Width / 2);
     public Vector3 BottomRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
