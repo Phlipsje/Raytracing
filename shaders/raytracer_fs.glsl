@@ -4,14 +4,16 @@ out vec4 outputColor;
 //2: the max space available for uniform variables is a mere 4096 components/16192 bytes. 
 //So i chose the biggest possible values for now but...
 //To meet the 5000 primitive criteria we will have to look into SSBO's or texture buffers. And we could probably compress some of the data. 
+//Additional bullshit: my integrated gpu does allow 4096 components WHICH IS THE MINIMUM REQUIREMNT OF OPENGL. But my dedicated rtx 3050 gpu fails to compile when using more then 1024 components WTF
 //max 5 planes, don't see why we need more
 uniform float[65] planes;
-//max 90 spheres
-uniform float[990] spheres;
-//max 150 triangles (barely a simple model)
-uniform float[2850] triangles;
+//max 90 spheres, 990 floats. OR on dedicated graphics max 10 spheres, 110 floats
+uniform float[110] spheres;
+//max 150 triangles (barely a simple model) OR on dedicated graphics max 40 triangles, 760 floats
+uniform float[760] triangles;
 //max 10 lights
 uniform float[70] lights;
+//the lengths of each of the primitive arrays, in same order as they are declared
 uniform float[4] lengths;
 //shadow acne prevention margin
 const float epsilon = 0.001f;

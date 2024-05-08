@@ -34,9 +34,10 @@ namespace OpenTK
             LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
             LoadShader("../../../shaders/raytracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
             GL.LinkProgram(programID);
-            Debug.WriteLine(GL.GetProgramInfoLog(programID));
+            /*Debug.WriteLine(GL.GetProgramInfoLog(programID));
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
             Debug.WriteLine(GL.GetShaderInfoLog(vertexShaderID));
+            Debug.WriteLine(GL.GetError());*/
 
             //create vertex information for screen filling quad
             float[] vertexData = new float[]
@@ -58,11 +59,12 @@ namespace OpenTK
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
 
+            Debug.WriteLine(GL.GetString(StringName.Vendor));
             Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_ligths);
             Debug.WriteLine("max fragment uniform data size: "  +GL.GetInteger(GetPName.MaxFragmentUniformComponents));
             SendPrimitivesToShader();
 
-            // bind buffer for positions
+            //bind buffer for positions
             GL.UseProgram(programID);
             int vbo_pos = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ArrayBuffer, vbo_pos);
