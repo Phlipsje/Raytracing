@@ -12,6 +12,7 @@ namespace OpenTK
 {
     class RayTracer
     {
+        int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
         int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_ligths, uniform_lengths;
@@ -29,6 +30,10 @@ namespace OpenTK
         {
             ScreenHelper.Resize(1280, 720);
 
+            //these lines togehter with the similar one in RenderGL somehow fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
+            vertexArrayObject = GL.GenVertexArray();
+            GL.BindVertexArray(vertexArrayObject);
+
             //load shaders
             programID = GL.CreateProgram();
             LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
@@ -38,6 +43,12 @@ namespace OpenTK
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
             Debug.WriteLine(GL.GetShaderInfoLog(vertexShaderID));
             Debug.WriteLine(GL.GetError());*/
+
+            // the program contains the compiled shaders, we can delete the source
+            GL.DetachShader(programID, vertexShaderID);
+            GL.DetachShader(programID, fragmentShaderID);
+            GL.DeleteShader(vertexShaderID);
+            GL.DeleteShader(fragmentShaderID);
 
             //create vertex information for screen filling quad
             float[] vertexData = new float[]
@@ -61,7 +72,7 @@ namespace OpenTK
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
             Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_ligths);
-            Debug.WriteLine("max fragment uniform data size: "  +GL.GetInteger(GetPName.MaxFragmentUniformComponents));
+            Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));
             SendPrimitivesToShader();
 
             //bind buffer for positions
@@ -105,10 +116,20 @@ namespace OpenTK
         {
             if(CameraMode == CameraMode.OpenGL)
             {
+                //make sure we are using the right program, and thus the right shaders
+                GL.UseProgram(programID);
+
+                //execute shaders
+                //this line togetjher with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
+                GL.BindVertexArray(vertexArrayObject);
                 GL.EnableVertexAttribArray(attribute_vPosition);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
                 //Debug.WriteLine("frame finished");
-            }    
+            }
+            else
+            {
+                //make sure the screen shader works
+            }
         }
 
         #region Debug2D
@@ -446,6 +467,7 @@ namespace OpenTK
         #endregion
         void HandleInput()
         {
+            //moving camera
             float delta = 1 / 60f;
             float speed = 1f;
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftShift))
@@ -461,6 +483,12 @@ namespace OpenTK
                 moveDirection -= new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
             if(moveDirection != Vector3.Zero)
                 camera.Position += moveDirection.Normalized() * speed * delta;
+
+            //switching rendering
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D4))
+                CameraMode = CameraMode.Debug3D;
+            else if(InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D5))
+                CameraMode = CameraMode.OpenGL;
         }
     }
 

@@ -42,7 +42,7 @@ namespace OpenTK
          * 
          * MacOS doesn't support prehistoric OpenGL anymore since 2018.
          */
-        public const bool allowPrehistoricOpenGL = true;
+        public const bool allowPrehistoricOpenGL = false;
 
         int screenID;        // unique integer identifier of the OpenGL texture
         RayTracer? app;      // instance of the application
@@ -57,7 +57,7 @@ namespace OpenTK
         // - UV
         readonly float[] vertices =
         { //  X      Y     Z     U     V
-            -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom-left  2-----3 triangles:
+             -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom-left  2-----3 triangles:
              1.0f, -1.0f, 0.0f, 1.0f, 1.0f, // bottom-right | \   |     012
             -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, // top-left     |   \ |     123
              1.0f,  1.0f, 0.0f, 1.0f, 0.0f, // top-right    0-----1
@@ -196,6 +196,7 @@ namespace OpenTK
                 GL.Disable(EnableCap.DepthTest);
                 GL.Color3(1.0f, 1.0f, 1.0f);
 
+                GL.UseProgram(programID);
                 GL.BindTexture(TextureTarget.Texture2D, screenID);
                 GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
                                ScreenHelper.screen.width, ScreenHelper.screen.height, 0,
@@ -218,10 +219,10 @@ namespace OpenTK
                     GL.Disable(EnableCap.Texture2D);
                     GL.Clear(ClearBufferMask.DepthBufferBit);
                 }
-                else
+                else if(app.CameraMode != CameraMode.OpenGL)
                 {
-                    GL.BindVertexArray(vertexArrayObject);
                     GL.UseProgram(programID);
+                    GL.BindVertexArray(vertexArrayObject);
                     GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
                 }
                 //render the scene after preperations are finished, notice this occurs after tick.
