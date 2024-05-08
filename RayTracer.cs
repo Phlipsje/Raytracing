@@ -39,10 +39,10 @@ namespace OpenTK
             LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
             LoadShader("../../../shaders/raytracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
             GL.LinkProgram(programID);
-            /*Debug.WriteLine(GL.GetProgramInfoLog(programID));
+            Debug.WriteLine(GL.GetProgramInfoLog(programID));
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
             Debug.WriteLine(GL.GetShaderInfoLog(vertexShaderID));
-            Debug.WriteLine(GL.GetError());*/
+            Debug.WriteLine(GL.GetError());
 
             // the program contains the compiled shaders, we can delete the source
             GL.DetachShader(programID, vertexShaderID);
@@ -238,7 +238,7 @@ namespace OpenTK
                         if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
                         {
                             viewRay.T = tuple.Item1;
-                            viewRay.Color = tuple.Item2.Color;
+                            viewRay.Color = tuple.Item2.DiffuseColor;
                         }
                     }
                     //The ray didn't hit so the rest can be skipped
@@ -259,7 +259,7 @@ namespace OpenTK
                     //for each light
                     for (int l = 0; l < scene.PointLights.Count; l++)
                     {
-                        Vector3 lightPos = scene.PointLights[l];
+                        Vector3 lightPos = scene.PointLights[l].Position;
                         float distanceToLight = (lightPos - hitPos).Length;
                         Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
                         //for each object
@@ -361,15 +361,15 @@ namespace OpenTK
                     spheresData[2 + offset] = sphere.Center.Z;
                     spheresData[3 + offset] = sphere.Radius;
                     //diffuse color
-                    spheresData[4 + offset] = sphere.Material.Color.R;
-                    spheresData[5 + offset] = sphere.Material.Color.G;
-                    spheresData[6 + offset] = sphere.Material.Color.B;
+                    spheresData[4 + offset] = sphere.Material.DiffuseColor.R;
+                    spheresData[5 + offset] = sphere.Material.DiffuseColor.G;
+                    spheresData[6 + offset] = sphere.Material.DiffuseColor.B;
                     //space for specular color
-                    spheresData[7 + offset] = 0f;
-                    spheresData[8 + offset] = 0f;
-                    spheresData[9 + offset] = 0f;
+                    spheresData[7 + offset] = sphere.Material.SpecularColor.R;
+                    spheresData[8 + offset] = sphere.Material.SpecularColor.G;
+                    spheresData[9 + offset] = sphere.Material.SpecularColor.B;
                     //space for specularity exponent n
-                    spheresData[10 + offset] = 0f;
+                    spheresData[10 + offset] = sphere.Material.SpecularWidth;
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
@@ -385,15 +385,15 @@ namespace OpenTK
                     planesData[4 + offset] = plane.Normal.Y;
                     planesData[5 + offset] = plane.Normal.Z;
                     //diffuse color
-                    planesData[6 + offset] = plane.Material.Color.R;
-                    planesData[7 + offset] = plane.Material.Color.G;
-                    planesData[8 + offset] = plane.Material.Color.B;
+                    planesData[6 + offset] = plane.Material.DiffuseColor.R;
+                    planesData[7 + offset] = plane.Material.DiffuseColor.G;
+                    planesData[8 + offset] = plane.Material.DiffuseColor.B;
                     //space for specular color
-                    planesData[9 + offset] = 0f;
-                    planesData[10 + offset] = 0f;
-                    planesData[11 + offset] = 0f;
+                    planesData[9 + offset] = plane.Material.SpecularColor.R;
+                    planesData[10 + offset] = plane.Material.SpecularColor.G;
+                    planesData[11 + offset] = plane.Material.SpecularColor.B;
                     //space for specularity exponent n
-                    planesData[12 + offset] = 0f;
+                    planesData[12 + offset] = plane.Material.SpecularWidth;
                     planesCounter++;
                 }
                 else
@@ -415,33 +415,31 @@ namespace OpenTK
                     trianglesData[10 + offset] = triangle.Normal.Y;
                     trianglesData[11 + offset] = triangle.Normal.Z;
                     //diffuse color
-                    trianglesData[12 + offset] = triangle.Material.Color.R;
-                    trianglesData[13 + offset] = triangle.Material.Color.G;
-                    trianglesData[14 + offset] = triangle.Material.Color.B;
+                    trianglesData[12 + offset] = triangle.Material.DiffuseColor.R;
+                    trianglesData[13 + offset] = triangle.Material.DiffuseColor.G;
+                    trianglesData[14 + offset] = triangle.Material.DiffuseColor.B;
                     //space for specular color
-                    trianglesData[15 + offset] = 0f;
-                    trianglesData[16 + offset] = 0f;
-                    trianglesData[17 + offset] = 0f;
+                    trianglesData[15 + offset] = triangle.Material.SpecularColor.R;
+                    trianglesData[16 + offset] = triangle.Material.SpecularColor.G;
+                    trianglesData[17 + offset] = triangle.Material.SpecularColor.B;
                     //space for specularity exponent n
-                    trianglesData[18 + offset] = 0f;
+                    trianglesData[18 + offset] = triangle.Material.SpecularWidth;
                     trianglesCounter++;
                 }
             }
             //only space for ten ligths
             int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
-            lightsData = new float[lightsAmount * 7];
+            lightsData = new float[lightsAmount * 6];
             for (int i = 0; i < lightsAmount; i++)
             {
-                int offset = i * 7;
-                lightsData[0 + offset] = scene.PointLights[i].X;
-                lightsData[1 + offset] = scene.PointLights[i].Y;
-                lightsData[2 + offset] = scene.PointLights[i].Z;
+                int offset = i * 6;
+                lightsData[0 + offset] = scene.PointLights[i].Position.X;
+                lightsData[1 + offset] = scene.PointLights[i].Position.Y;
+                lightsData[2 + offset] = scene.PointLights[i].Position.Z;
                 //space for light color
-                lightsData[3 + offset] = 0f;
-                lightsData[4 + offset] = 0f;
-                lightsData[5 + offset] = 0f;
-                //space for light intensity
-                lightsData[6 + offset] = 0f;
+                lightsData[3 + offset] = scene.PointLights[i].Intensity.R;
+                lightsData[4 + offset] = scene.PointLights[i].Intensity.G;
+                lightsData[5 + offset] = scene.PointLights[i].Intensity.B;
             }
                 float[] lengths = new float[]
             {

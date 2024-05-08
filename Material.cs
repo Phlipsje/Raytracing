@@ -13,15 +13,34 @@ namespace INFOGR2024Template
     /// </summary>
     public class Material
     {
-        public Material(Color4 color) 
+        float specularWidth;
+        public Color4 DiffuseColor { get; set; } //The color of a Material.
+        public Color4 SpecularColor { get; set; } //The specular color of the material
+        public float SpecularWidth  //the specularity or glossiness of a material
         {
-            Color = color;
+            get => specularWidth;
+            set { specularWidth = MathF.Max(specularWidth, 1); }
         }
-        public Color4 Color { get; set; } //The color of a Material.
-        public Color4 OnCollision(Vector3 impactPoint, float angle)//The function called upon collision
+        public Material(Color4 diffuseColor, Color4 specularColor, float specularWidth)
         {
-            return Color;
-        } 
-
+            DiffuseColor = diffuseColor;
+            SpecularColor = specularColor;
+            SpecularWidth = specularWidth;
+        }
+        public Material(Color4 diffuseColor) 
+        {
+            DiffuseColor = diffuseColor;
+            SpecularColor = Color4.Black;
+            SpecularWidth = 1;
+        }
+        public Material(Color4 diffuseColor, bool isMetal, float specularity, float specularWidth)
+        {
+            DiffuseColor = diffuseColor;
+            if (isMetal)
+                SpecularColor = new Color4(diffuseColor.R * specularity, diffuseColor.G * specularity, diffuseColor.B * specularity, 1.0f);
+            else
+                SpecularColor = new Color4(specularity, specularity, specularity, 1.0f);
+            SpecularWidth = specularWidth;
+        }
     }
 }
