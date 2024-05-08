@@ -24,13 +24,13 @@ namespace INFOGR2024Template.Scenes
             //Camera = new Camera(new Vector3(0, 1f, -5), new Vector3(0f, 0f, 1f), new Vector3(1f, 0f, 0), 1f, 1.6f, 0.9f);
             Primitives = new List<IPrimitive>
             {                
-                new Sphere(new Vector3(-1, 0.5f, 0), 0.5f, new Material(Color4.Red, Color4.Gray, 1f)),
-                new Sphere(new Vector3(0f, 1f, 2f), 1f, new Material(Color4.Pink, Color4.Gray, 3f)),
-                new Sphere(new Vector3(-1, 0.3f, -1f), 0.3f, new Material(Color4.Gold, Color4.Gold, 1f)),
-                new Sphere(new Vector3(-2, 0.8f, -2), 0.8f, new Material(Color4.Purple, Color4.Purple, 3f)),
+                new Sphere(new Vector3(-1, 0.5f, 0), 0.5f, new Material(Color4.Red, Color4.Gray, 50f)),
+                new Sphere(new Vector3(0f, 1f, 2f), 1f, new Material(Color4.Pink, Color4.DimGray, 100f)),
+                new Sphere(new Vector3(-1, 0.3f, -1f), 0.3f, new Material(Color4.Gold, Color4.Gold, 5f)),
+                new Sphere(new Vector3(-2, 0.8f, -2), 0.8f, new Material(Color4.Purple, Color4.Purple, 15f)),
                 new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White)),
-                new Sphere(new Vector3(-1, 0.5f, 0) + offset, 0.5f, new Material(Color4.Red, Color4.Gray, 10f)),
-                new Sphere(new Vector3(0f, 1f, 2f) + offset, 1f, new Material(Color4.Pink, Color4.White, 1f)),
+                new Sphere(new Vector3(-1, 0.5f, 0) + offset, 0.5f, new Material(Color4.Red, Color4.Gray, 50f)),
+                new Sphere(new Vector3(0f, 1f, 2f) + offset, 1f, new Material(Color4.Pink, Color4.White, 5f)),
                 new Sphere(new Vector3(-1, 0.3f, -1f) + offset, 0.3f, new Material(Color4.Yellow, Color4.White, 100f)),
                 new Sphere(new Vector3(-2, 0.8f, -2) + offset, 0.8f, new Material(Color4.Purple)),
             };
@@ -40,9 +40,12 @@ namespace INFOGR2024Template.Scenes
             float lampExtraDistance = 10f;
             PointLights = new List<PointLight>
             {
-                new PointLight(new Vector3(-10f, 5f, 0f) * lampExtraDistance, new Color4(0.2f, 0.2f, 0.2f, 1.0f)),
-                new PointLight(new Vector3(0f, 5f, -10f) * lampExtraDistance, new Color4(0.2f, 0.2f, 0.2f, 1.0f)),
-                new PointLight(new Vector3(-10f, 10f, 5f) * lampExtraDistance, new Color4(0.5f, 0.5f, 0.5f, 1.0f))
+                new PointLight(new Vector3(-5f, 10f, 0f), new Color4(70, 70, 70, 1.0f)),
+                new PointLight(new Vector3(0f, 3f, 0f), new Color4(0, 4, 4, 1.0f)),
+                new PointLight(new Vector3(0.5f, 2.5f, -3f), new Color4(3f, 0, 6, 1.0f)),
+                new PointLight(new Vector3(8f, 5f, 2f), new Color4(10f, 5f, 0f, 1.0f)),
+                new PointLight(new Vector3(5f, 10f, 5f), new Color4(30, 30, 30, 1.0f)),
+                new PointLight(new Vector3(30f, 10f, 0f), new Color4(300, 300, 300, 1f))
             };
         }
         public void Tick()

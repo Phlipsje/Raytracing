@@ -17,7 +17,7 @@ uniform float[60] lights;
 uniform float[4] lengths;
 //shadow acne prevention margin
 const float epsilon = 0.001f;
-const vec3 ambiantLight = vec3(0.01f, 0.01f, 0.01f);
+const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
 
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
@@ -39,11 +39,11 @@ vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radiu
 		return vec4(-1, -1, -1, -1);
 	if (t2 <= epsilon)
 	{
-		vec3 normal = t1 * rayDirection - center;
+		vec3 normal = normalize((rayOrigin + t1 * rayDirection) - center);
 		return vec4(normal, t1);
 	}
-	vec3 normal = t2 * rayDirection - center;
-	return vec4(-1, -1, -1, t2);
+	vec3 normal = normalize((rayOrigin + t2 * rayDirection) - center);
+	return vec4(normal, t2);
 }
 float IntersectPlane(vec3 rayOrigin, vec3 rayDirection, vec3 center, vec3 normal)
 {
@@ -76,9 +76,11 @@ void main()
 
 	//calculate closest object
 	vec3 rayOrigin = vec3(camera[0], camera[1], camera[2]);
-	vec3 rayDirection = normalize((bottomLeft + (x/width) * (bottomRight - bottomLeft) + (y/height) * (topLeft - bottomLeft)) - rayOrigin);
+	vec3 rayDirection = normalize( (bottomLeft + (x/width) * (bottomRight - bottomLeft) + (y/height) * (topLeft - bottomLeft)) - rayOrigin );
 	float t = 3.402823466e+38;
 	vec3 hitColor = vec3(0, 0, 0);
+	vec3 hitSpecularColor = vec3(0, 0, 0);
+	float hitSpecularity = 1.0f;
 	vec3 hitNormal = vec3(0, 0, 0);
 	for (int i = 0; i < lengths[1]; i += 11)
 	{
@@ -87,6 +89,8 @@ void main()
 		{
 			t = result.w;
 			hitColor = vec3( spheres[i+4], spheres[i+5], spheres[i+6]);
+			hitSpecularColor = vec3(spheres[i + 7], spheres[i + 8], spheres[i + 9]);
+			hitSpecularity = spheres[i + 10];
 			hitNormal = result.xyz;
 		}
 	}
@@ -98,6 +102,8 @@ void main()
 		{
 			t = result;
 			hitColor = vec3(planes[i + 6], planes[i + 7], planes[i + 8]);
+			hitSpecularColor = vec3(planes[i + 9], planes[i + 10], planes[i + 11]);
+			hitSpecularity = planes[i + 12];
 			hitNormal = planeNormal;
 		}
 	}
@@ -112,6 +118,8 @@ void main()
 		{
 			t = result;
 			hitColor = vec3(triangles[i + 12], triangles[i + 13], triangles[i + 14]);
+			hitSpecularColor = vec3(triangles[i + 15], triangles[i + 16], triangles[i + 17]);
+			hitSpecularity = triangles[i + 18];
 			hitNormal = triangleNormal;
 		}
 	}
@@ -122,13 +130,12 @@ void main()
 		return;
 	}
 
-	//calculate illumination of point on closest object
-	float illumination = 0.0f;
-	float lightIntensity = 1.0f / (lengths[3] / 7.0f);
+	//calculate lighting of point on closest objec
 	vec3 hitPos = rayOrigin + t * rayDirection;
-	for (int i = 0; i < lengths[3]; i += 6)
+	vec3 combinedColor = vec3(hitColor * ambiantLight);
+	for (int l = 0; l < lengths[3]; l += 6)
 	{
-		vec3 lightPos = vec3(lights[i], lights[i + 1], lights[i + 2]);
+		vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
 		float distanceToLight = length(lightPos - hitPos);
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
@@ -170,10 +177,16 @@ void main()
 			}
 		}
 		if (shadowRayT < 0)
-			illumination += lightIntensity;
+		{
+			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
+			//make sure normal is right way around
+			if (dot(hitNormal, rayDirection) > 0.0f)
+				hitNormal = -hitNormal;
+			vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
+			combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity));
+		}
 	}
-	hitColor = illumination * hitColor;
 
 	//output result of calculations
-	outputColor = vec4(hitColor, 1.0f);
+	outputColor = vec4(combinedColor, 1.0f);
 }

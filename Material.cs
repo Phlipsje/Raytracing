@@ -19,7 +19,7 @@ namespace INFOGR2024Template
         public float SpecularWidth  //the specularity or glossiness of a material
         {
             get => specularWidth;
-            set { specularWidth = MathF.Max(specularWidth, 1); }
+            set { specularWidth = MathF.Max(value, 1); }
         }
         public Material(Color4 diffuseColor, Color4 specularColor, float specularWidth)
         {
