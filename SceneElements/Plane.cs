@@ -17,7 +17,7 @@ namespace INFOGR2024Template.SceneElements
         public Plane(Vector3 center, Vector3 normal, Material material)
         {
             Center = center;
-            Normal = normal;
+            Normal = normal.Normalized();
             Material = material;
         }
         public Tuple<float, Material> RayIntersect(Ray ray)

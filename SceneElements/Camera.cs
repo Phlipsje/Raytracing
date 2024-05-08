@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -27,6 +29,8 @@ public class Camera
                                           (RightDirection * Width / 2);
     public Vector3 BottomRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
                                          (RightDirection * Width / 2);
+    public Vector3 BottomLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) -
+                                         (RightDirection * Width / 2);
 
     //This will automatically focus on an object on (0,0,0)
     public Camera()
@@ -41,21 +45,28 @@ public class Camera
         RightDirection.Normalize();
     }
     
-    //Custom values
-    public Camera(Vector3 position, Vector3 viewDirection, float distanceToCenter, float width, float height)
+    /// <summary>
+    /// Constructs a camera with custom values, make sure viewDirection and rightDirection are orthogonal and oriented in the right way
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="viewDirection"></param>
+    /// <param name="rightDirection"></param>
+    /// <param name="distanceToCenter"></param>
+    /// <param name="width"></param>
+    /// <param name="height"></param>
+    public Camera(Vector3 position, Vector3 viewDirection, Vector3 rightDirection, float distanceToCenter, float width, float height)
     {
         Position = position;
-        ViewDirection = viewDirection;
-        ViewDirection.Normalize();
+        ViewDirection = viewDirection.Normalized();
+        RightDirection = rightDirection.Normalized();
         DistanceToCenter = distanceToCenter;
         Width = width;
         Height = height;
-    }
-
-    public void SetViewDirection(Vector3 vector3)
-    {
-        vector3.Normalize();
-        ViewDirection = vector3;
+        float dot = Vector3.Dot(ViewDirection, RightDirection);
+        if (dot < -0.01f || dot > 0.01f)
+        {
+            Debug.WriteLine("dot product of viewdirection and rightdirection is not near zero, dot:" + dot + ". Make sure they are orthogonal to form the right basis");
+        }
     }
     
     public void SetViewDirection(Vector3 viewDirection, Vector3 rightDirection)

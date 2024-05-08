@@ -1,11 +1,14 @@
 using System.Runtime.CompilerServices;
 using INFOGR2024Template.SceneElements;
 using INFOGR2024Template.Scenes;
+using INFOGR2024Template;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using SixLabors.ImageSharp;
+using System.Diagnostics;
+using OpenTK.Graphics.ES11;
 
 namespace OpenTK
 {
@@ -724,7 +727,82 @@ namespace OpenTK
         #region Debug3D
         private void RenderDebug3D()
         {
-            
+            int width = ScreenHelper.screen.width;
+            int height = ScreenHelper.screen.height;
+            Camera camera = scene.Camera;
+            //for every pixel
+            for (int x = 0; x < width; x++) 
+            {
+                for(int y = 0; y < height; y++)
+                {
+                    //make ray from camera through the plane in the correct spot
+                    Vector3 bottomLeft = camera.BottomLeftCameraPlane;
+                    Vector3 bottomRight = camera.BottomRightCameraPlane;
+                    Vector3 topLeft = camera.TopLeftCameraPlane;
+                    Vector3 planePos = bottomLeft + ((float)x/width) * (bottomRight - bottomLeft) + ((float)y/height) * (topLeft - bottomLeft);
+                    Vector3 direction = planePos - camera.Position;
+                    Ray viewRay = new Ray(camera.Position, direction);
+
+                    //for every object in the scene
+                    for(int i = 0; i < scene.Primitives.Count; i++) 
+                    {
+                        //Check for intersection and if the object is the closest hit object so far, store the distance and color
+                        Tuple<float, Material> tuple = scene.Primitives[i].RayIntersect(viewRay);
+                        if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
+                        {
+                            viewRay.T = tuple.Item1;
+                            viewRay.Color = tuple.Item2.Color;
+                        }
+                    }
+                    //The ray didn't hit so the rest can be skipped
+                    if (viewRay.T < 0f)
+                        continue;
+                    //if there are no point lights in the scene, immediately return the color without lighting
+                    if (scene.PointLights.Count == 0)
+                    {
+                        ScreenHelper.SetPixel(x, y, viewRay.Color);
+                        continue;
+                    }
+
+                    //the illumination of the current pixel
+                    float illumination = 0f;
+                    //the intensity of each point light
+                    float lightIntensity = 1f / scene.PointLights.Count;
+                    Vector3 hitPos = viewRay.Origin + viewRay.Direction * viewRay.T;
+                    //for each light
+                    for (int l = 0; l < scene.PointLights.Count; l++)
+                    {
+                        Vector3 lightPos = scene.PointLights[l];
+                        float distanceToLight = (lightPos - hitPos).Length;
+                        Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
+                        //for each object
+                        for (int p = 0; p < scene.Primitives.Count; p++)
+                        {
+                            //check if it is between the lamp and the light
+                            Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
+                            if (tuple.Item1 > 0.001f && tuple.Item1 < distanceToLight)
+                            {
+                                shadowRay.T = tuple.Item1;
+                                break;
+                            }
+                        }
+                        //if no objects were between the lamp and the light
+                        if (shadowRay.T < 0f)
+                        {
+                            //add the lamps 'intensity' to the light
+                            illumination += lightIntensity;
+                        }
+                    }
+                    //if there is illumanition 
+                    if (illumination > 0f)
+                    {
+                        Color4 c = viewRay.Color;
+                        //draw the color adjusted by illumination to the screen
+                        ScreenHelper.SetPixel(x, y, new Color4(c.R * illumination, c.G * illumination, c.B * illumination, 1f));
+                    }
+                }
+            }
+            Debug.WriteLine("frame finished");
         }
         #endregion
 

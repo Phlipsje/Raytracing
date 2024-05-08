@@ -62,8 +62,8 @@ namespace INFOGR2024Template.SceneElements
             Vector3 intersection = ray.Origin + t * ray.Direction;
             //the intersection can be ignored if the point lies outside the triangle
             if (Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0 
-                || Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0
-                || Vector3.Dot(Vector3.Cross(PointB - PointA, intersection - PointA), Normal) < 0)
+                || Vector3.Dot(Vector3.Cross(PointC - PointB, intersection - PointB), Normal) < 0
+                || Vector3.Dot(Vector3.Cross(PointA - PointC, intersection - PointC), Normal) < 0)
                 return new Tuple<float, Material>(float.MinValue, Material);
             return new Tuple<float, Material>(t, Material);
         }
