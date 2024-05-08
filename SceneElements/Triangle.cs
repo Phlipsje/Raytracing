@@ -48,8 +48,9 @@ namespace INFOGR2024Template.SceneElements
         {   
             to be added
         }*/
-        public Tuple<float, Material> RayIntersect(Ray ray)
+        public Tuple<float, Material> RayIntersect(Ray ray, out Vector3 normal)
         {
+            normal = Normal;
             float denominator = Vector3.Dot(ray.Direction, Normal);
             //if denominator is 0 then the vector is parallel and the ray will not hit.
             if (denominator == 0)

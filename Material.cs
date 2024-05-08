@@ -13,15 +13,21 @@ namespace INFOGR2024Template
     /// </summary>
     public class Material
     {
-        public Material(Color4 color) 
+        public Material(Color4 color, bool isMetal, int specularWidth = 2) 
         {
             Color = color;
+            IsMetal = isMetal;
+            SpecularWidth = specularWidth;
+
+            if (isMetal )
+            {
+                SpecularColor = color;
+            }
+            else { SpecularColor = Color4.White; }
         }
         public Color4 Color { get; set; } //The color of a Material.
-        public Color4 OnCollision(Vector3 impactPoint, float angle)//The function called upon collision
-        {
-            return Color;
-        } 
-
+        public bool IsMetal {  get; set; }// Bool for metal or plastic like reflaction.
+        public Color4 SpecularColor { get; set; } //The Specular color.
+        public int SpecularWidth { get; set; }
     }
 }

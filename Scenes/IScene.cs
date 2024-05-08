@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OpenTK.Mathematics;
+using INFOGR2024Template.SceneElements;
 
 namespace INFOGR2024Template.Scenes
 {
@@ -14,7 +15,7 @@ namespace INFOGR2024Template.Scenes
     public interface IScene
     {
         public List<IPrimitive> Primitives { get; set; }
-        public List<Vector3> PointLights { get; set; }
+        public List<PointLight> PointLights { get; set; }
         public Camera Camera { get; set; }
 
         public void Tick();

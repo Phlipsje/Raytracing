@@ -17,8 +17,9 @@ public class Sphere : IPrimitive
     }
 
     //only works if ray.Direction is normalised (should be the case)
-    public Tuple<float, Material> RayIntersect(Ray ray)
+    public Tuple<float, Material> RayIntersect(Ray ray, out Vector3 normal)
     {
+        normal = new Vector3();
         //note that the a in the discriminant is always 1 as the ray is normalised
         //Algorithm for ABC formule
         Vector3 V = ray.Origin - Center;
@@ -34,7 +35,11 @@ public class Sphere : IPrimitive
             return new Tuple<float, Material>(float.MinValue, Material);
         //small margin to avoid intersecting with itself in shadow calculation
         if (t2 <= 0.001f)
+        {
+            normal = ray.Origin + ray.Direction * t1 - Center;
             return new Tuple<float, Material>(t1, Material);
+        }
+        normal = ray.Origin + ray.Direction * t2 - Center;
         return new Tuple<float, Material>(t2, Material);
     }
 }

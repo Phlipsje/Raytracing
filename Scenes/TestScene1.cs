@@ -15,7 +15,7 @@ namespace INFOGR2024Template.Scenes
     {
         public List<IPrimitive> Primitives { get; set; }
         public Camera Camera {  get; set; }
-        public List<Vector3> PointLights { get; set; }
+        public List<PointLight> PointLights { get; set; }
 
         public TestScene1() 
         {
@@ -24,17 +24,16 @@ namespace INFOGR2024Template.Scenes
             Primitives = new List<IPrimitive>
             {
                      
-                new Sphere(new Vector3(-1, 0.5f, 0), 0.5f, new Material(Color4.Red)),
-                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White))
+                new Sphere(new Vector3(-1, 0.5f, 0), 0.5f, new Material(Color4.Red, true)),
+                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White, false))
             };
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Yellow))).ToList();
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Blue))).ToList();
-            PointLights = new List<Vector3>
+            //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Yellow, true))).ToList();
+            //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Blue, false))).ToList();
+            PointLights = new List<PointLight>
             {
-                //new Vector3(-10f, 5f, 0f), 
-                new Vector3(0f, 5f, -10f), 
-                new Vector3(-10f, 10f, 5f), 
-                new Vector3(0f, 1f, 0f)
+                new PointLight(0f, 5f, -10f, 10f, 10f, 10f, 1f), 
+                new PointLight(-10f, 10f, 5f, 5f, 5f, 5f, 1f), 
+                new PointLight(0f, 1f, 0f, 0f, 3f, 3f, 1f)
             };
         }
         public void Tick()

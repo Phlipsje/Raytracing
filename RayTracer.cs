@@ -5,6 +5,7 @@ using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 using System.Diagnostics;
 using OpenTK.Graphics.ES11;
+using INFOGR2024Template.SceneElements;
 
 namespace OpenTK
 {
@@ -140,15 +141,18 @@ namespace OpenTK
                     Vector3 direction = planePos - camera.Position;
                     Ray viewRay = new Ray(camera.Position, direction);
 
+                    Vector3 normalOfHit = new Vector3();
+
+                    
                     //for every object in the scene
                     for(int i = 0; i < scene.Primitives.Count; i++) 
                     {
                         //Check for intersection and if the object is the closest hit object so far, store the distance and color
-                        Tuple<float, Material> tuple = scene.Primitives[i].RayIntersect(viewRay);
+                        Tuple<float, Material> tuple = scene.Primitives[i].RayIntersect(viewRay, out normalOfHit);
                         if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
                         {
                             viewRay.T = tuple.Item1;
-                            viewRay.Color = tuple.Item2.Color;
+                            viewRay.Material = tuple.Item2;
                         }
                     }
                     //The ray didn't hit so the rest can be skipped
@@ -157,26 +161,25 @@ namespace OpenTK
                     //if there are no point lights in the scene, immediately return the color without lighting
                     if (scene.PointLights.Count == 0)
                     {
-                        ScreenHelper.SetPixel(x, y, viewRay.Color);
+                        ScreenHelper.SetPixel(x, y, viewRay.Material.Color);
                         continue;
                     }
 
                     //the illumination of the current pixel
-                    float illumination = 0f;
-                    //the intensity of each point light
-                    float lightIntensity = 1f / scene.PointLights.Count;
+                    int numberOfLightsHit = 0;
+                    Color4 pixelColor = new Color4(0f, 0f, 0f, 0f);
                     Vector3 hitPos = viewRay.Origin + viewRay.Direction * viewRay.T;
                     //for each light
                     for (int l = 0; l < scene.PointLights.Count; l++)
                     {
-                        Vector3 lightPos = scene.PointLights[l];
-                        float distanceToLight = (lightPos - hitPos).Length;
-                        Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
+                        PointLight light = scene.PointLights[l];
+                        float distanceToLight = (light.Position - hitPos).Length;
+                        Ray shadowRay = new Ray(hitPos, light.Position - hitPos);  
                         //for each object
                         for (int p = 0; p < scene.Primitives.Count; p++)
                         {
                             //check if it is between the lamp and the light
-                            Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
+                            Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay, out _);
                             if (tuple.Item1 > 0.001f && tuple.Item1 < distanceToLight)
                             {
                                 shadowRay.T = tuple.Item1;
@@ -187,20 +190,26 @@ namespace OpenTK
                         if (shadowRay.T < 0f)
                         {
                             //add the lamps 'intensity' to the light
-                            illumination += lightIntensity;
+                            numberOfLightsHit++;
+                            Color4 diffuse = ColorHelper.EntrywiseProduct(viewRay.Material.Color, ColorHelper.Multiplication(light.Intesity, Math.Abs(Vector3.Dot(normalOfHit, shadowRay.Direction.Normalized()))));
+                            Color4 specular = ColorHelper.EntrywiseProduct(viewRay.Material.Color, ColorHelper.Multiplication(light.Intesity,(float) Math.Pow((double)Math.Abs(Vector3.Dot(viewRay.Direction, shadowRay.Direction.Normalized())), (double)viewRay.Material.SpecularWidth)));
+                            Color4 diffuseAndSpecular = ColorHelper.Multiplication(ColorHelper.EntrywiseProduct(diffuse, specular), 1 / (distanceToLight * distanceToLight));
+                            
+                            pixelColor = ColorHelper.Adition(pixelColor, diffuseAndSpecular);
+                            
                         }
                     }
                     //if there is illumanition 
-                    if (illumination > 0f)
-                    {
-                        Color4 c = viewRay.Color;
+                    Color4 ambientLighting = ColorHelper.EntrywiseProduct(viewRay.Material.Color, ColorHelper.Multiplication(Color4.Gray, 0.1f));
+                        Color4 c = ColorHelper.Adition(ColorHelper.Multiplication(pixelColor, 1/numberOfLightsHit), ambientLighting);
                         //draw the color adjusted by illumination to the screen
-                        ScreenHelper.SetPixel(x, y, new Color4(c.R * illumination, c.G * illumination, c.B * illumination, 1f));
-                    }
+                        ScreenHelper.SetPixel(x, y, c);
+                    
                 }
             }
             Debug.WriteLine("frame finished");
         }
+        
         #endregion
 
         #region Raytracer
