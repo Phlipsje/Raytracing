@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using INFOGR2024Template.SceneElements;
 using INFOGR2024Template.Scenes;
 using INFOGR2024Template;
@@ -6,16 +5,14 @@ using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 using OpenTK.Windowing.GraphicsLibraryFramework;
-using SixLabors.ImageSharp;
 using System.Diagnostics;
-using OpenTK.Graphics.ES11;
 
 namespace OpenTK
 {
     class RayTracer
     {
         private CameraMode cameraMode = CameraMode.Debug2D;
-        private Camera camera => scene.camera;
+        private Camera camera => scene.Camera;
         private IScene scene;
         private ViewDirection viewDirection = ViewDirection.Topdown;
         // constructor
@@ -83,7 +80,7 @@ namespace OpenTK
             
             //Draw all primitives, drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.primitives)
+            foreach (var primitive in scene.Primitives)
             {
                 //Don't draw planes
                 if (primitive.GetType() == typeof(Plane))
@@ -296,7 +293,7 @@ namespace OpenTK
             
             //Draw all primitives, drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.primitives)
+            foreach (var primitive in scene.Primitives)
             {
                 //Don't draw planes
                 if (primitive.GetType() == typeof(Plane))
@@ -509,7 +506,7 @@ namespace OpenTK
             
             //Draw all primitives, drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.primitives)
+            foreach (var primitive in scene.Primitives)
             {
                 //Don't draw planes
                 if (primitive.GetType() == typeof(Plane))

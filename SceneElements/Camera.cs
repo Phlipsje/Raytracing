@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -28,8 +27,6 @@ public class Camera
     public Vector3 TopRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (UpDirection * Height / 2) +
                                           (RightDirection * Width / 2);
     public Vector3 BottomRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
-                                         (RightDirection * Width / 2);
-    public Vector3 BottomLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) -
                                          (RightDirection * Width / 2);
 
     //This will automatically focus on an object on (0,0,0)
