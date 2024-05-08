@@ -14,8 +14,8 @@ namespace OpenTK
     {
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_lengths;
-        float[] planesData, spheresData, trianglesData, cameraData;
+        int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_ligths, uniform_lengths;
+        float[] planesData, spheresData, trianglesData, cameraData, lightsData;
         public CameraMode CameraMode = CameraMode.OpenGL;
         private Camera camera => scene.Camera;
         private IScene scene;
@@ -56,8 +56,9 @@ namespace OpenTK
             uniform_triangles = GL.GetUniformLocation(programID, "triangles");
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
+            uniform_ligths = GL.GetUniformLocation(programID, "lights");
 
-            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles);
+            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_ligths);
             Debug.WriteLine("max fragment uniform data size: "  +GL.GetInteger(GetPName.MaxFragmentUniformComponents));
             SendPrimitivesToShader();
 
@@ -79,7 +80,7 @@ namespace OpenTK
         {
             ScreenHelper.Clear();
             scene.Tick();
-
+            HandleInput();
             switch (CameraMode)
             {
                 case CameraMode.Debug2D:
@@ -102,11 +103,9 @@ namespace OpenTK
         {
             if(CameraMode == CameraMode.OpenGL)
             {
-                //GL.UseProgram(programID);
                 GL.EnableVertexAttribArray(attribute_vPosition);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-                Debug.WriteLine("frame finished");
-                //Debug.WriteLine(GL.GetError());
+                //Debug.WriteLine("frame finished");
             }    
         }
 
@@ -296,6 +295,12 @@ namespace OpenTK
         }
         private void SendPrimitivesToShader()
         {
+            //shader limit values:
+            int maxSpheres = 90;
+            int maxPlanes = 5;
+            int maxTriangles = 150;
+            int maxLights = 10;
+
             //fill float arrays for primitives data
             List<IPrimitive> primitives = scene.Primitives;
             int spheresAmount = 0;
@@ -310,6 +315,9 @@ namespace OpenTK
                 else
                     trianglesAmount++;
             }
+            spheresAmount = Math.Min(spheresAmount, maxSpheres);
+            planesAmount = Math.Min(planesAmount, maxPlanes);
+            trianglesAmount = Math.Min(trianglesAmount, maxTriangles);
             spheresData = new float[spheresAmount * 11];
             planesData = new float[planesAmount * 13];
             trianglesData = new float[trianglesAmount * 19];
@@ -321,6 +329,8 @@ namespace OpenTK
                 IPrimitive primitive = primitives[i];
                 if (primitive is Sphere)
                 {
+                    if (sphereCounter > maxSpheres - 1)
+                        continue;
                     Sphere sphere = (Sphere)primitive;
                     int offset = 11 * sphereCounter;
                     spheresData[0 + offset] = sphere.Center.X;
@@ -341,6 +351,8 @@ namespace OpenTK
                 }
                 else if (primitive is Plane)
                 {
+                    if (planesCounter > maxPlanes - 1)
+                        continue;
                     Plane plane = (Plane)primitive;
                     int offset = 13 * planesCounter;
                     planesData[0 + offset] = plane.Center.X;
@@ -363,6 +375,8 @@ namespace OpenTK
                 }
                 else
                 {
+                    if (trianglesCounter > maxTriangles - 1)
+                        continue;
                     Triangle triangle = (Triangle)primitive;
                     int offset = 19 * trianglesCounter;
                     trianglesData[0 + offset] = triangle.PointA.X;
@@ -390,16 +404,33 @@ namespace OpenTK
                     trianglesCounter++;
                 }
             }
-            float[] lengths = new float[]
+            //only space for ten ligths
+            int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
+            lightsData = new float[lightsAmount * 7];
+            for (int i = 0; i < lightsAmount; i++)
             {
-                planesData.Length, spheresData.Length, trianglesData.Length 
+                int offset = i * 7;
+                lightsData[0 + offset] = scene.PointLights[i].X;
+                lightsData[1 + offset] = scene.PointLights[i].Y;
+                lightsData[2 + offset] = scene.PointLights[i].Z;
+                //space for light color
+                lightsData[3 + offset] = 0f;
+                lightsData[4 + offset] = 0f;
+                lightsData[5 + offset] = 0f;
+                //space for light intensity
+                lightsData[6 + offset] = 0f;
+            }
+                float[] lengths = new float[]
+            {
+                planesData.Length, spheresData.Length, trianglesData.Length, lightsData.Length
             };
             //send the primitives data to the shader
             GL.UseProgram(programID);
             GL.Uniform1(uniform_planes, planesData.Length, planesData);
             GL.Uniform1(uniform_triangles, trianglesData.Length, trianglesData);
             GL.Uniform1(uniform_spheres, spheresData.Length, spheresData);
-            GL.Uniform1(uniform_lengths, 3, lengths);
+            GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
+            GL.Uniform1(uniform_lengths, lengths.Length, lengths);
         }
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {
@@ -411,6 +442,24 @@ namespace OpenTK
             Console.WriteLine(GL.GetShaderInfoLog(ID));
         }
         #endregion
+        void HandleInput()
+        {
+            float delta = 1 / 60f;
+            float speed = 1f;
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftShift))
+                speed = 5f;
+            Vector3 moveDirection = Vector3.Zero;
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.A))
+                moveDirection -= camera.RightDirection;
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D))
+                moveDirection += camera.RightDirection;
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.W))
+                moveDirection  += new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.S))
+                moveDirection -= new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
+            if(moveDirection != Vector3.Zero)
+                camera.Position += moveDirection.Normalized() * speed * delta;
+        }
     }
 
     enum CameraMode

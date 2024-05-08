@@ -25,16 +25,26 @@ namespace INFOGR2024Template.Scenes
             {
                      
                 new Sphere(new Vector3(-1, 0.5f, 0), 0.5f, new Material(Color4.Red)),
+                new Sphere(new Vector3(0f, 0.5f, 2f), 1f, new Material(Color4.Pink)),
+                new Sphere(new Vector3(-1, 0.3f, -1f), 0.3f, new Material(Color4.Gold)),
+                new Sphere(new Vector3(-2, 0.8f, -2), 0.8f, new Material(Color4.Purple)),
                 new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White))
             };
             Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Yellow))).ToList();
             Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Blue))).ToList();
+            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise))).ToList();
+            float lampExtraDistance = 10f;
             PointLights = new List<Vector3>
             {
-                //new Vector3(-10f, 5f, 0f), 
-                //new Vector3(0f, 5f, -10f), 
-                new Vector3(-10f, 10f, 5f), 
-                //new Vector3(0f, 1f, 0f)
+                new Vector3(-10f, 5f, 0f) * lampExtraDistance,
+                new Vector3(0f, 5f, -10f) * lampExtraDistance,
+                new Vector3(-10f, 10f, 5f) * lampExtraDistance,
+                /*new Vector3(0f, 1f, -0.5f),
+                new Vector3(0f, 10f, 0f) * lampExtraDistance,
+                new Vector3(3f, 10f, 3f) * lampExtraDistance,
+                new Vector3(-3f, 10f, -3f) * lampExtraDistance,
+                new Vector3(10f, 2f, -2f) * lampExtraDistance, 
+                new Vector3(0f, 3f, 10f) * lampExtraDistance*/
             };
         }
         public void Tick()

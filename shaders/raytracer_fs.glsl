@@ -6,11 +6,15 @@ out vec4 outputColor;
 //To meet the 5000 primitive criteria we will have to look into SSBO's or texture buffers. And we could probably compress some of the data. 
 //max 5 planes, don't see why we need more
 uniform float[65] planes;
-//max 100 spheres
-uniform float[1100] spheres;
+//max 90 spheres
+uniform float[990] spheres;
 //max 150 triangles (barely a simple model)
 uniform float[2850] triangles;
-uniform float[3] lengths;
+//max 10 lights
+uniform float[70] lights;
+uniform float[4] lengths;
+//shadow acne prevention margin
+const float epsilon = 0.001f;
 
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
@@ -28,7 +32,7 @@ float IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radi
 	float t2 = (-b - rootd) / 2;
 	if (t1 < 0)
 		return -1;
-	if (t2 <= 0.001f)
+	if (t2 <= epsilon)
 		return t1;
 	return t2;
 }
@@ -61,6 +65,7 @@ void main()
 	vec3 bottomRight = vec3(camera[6], camera[7], camera[8]);
 	vec3 topLeft = vec3(camera[9], camera[10], camera[11]);
 
+	//calculate closest object
 	vec3 rayOrigin = vec3(camera[0], camera[1], camera[2]);
 	vec3 rayDirection = normalize((bottomLeft + (x/width) * (bottomRight - bottomLeft) + (y/height) * (topLeft - bottomLeft)) - rayOrigin);
 	float t = 3.402823466e+38;
@@ -95,5 +100,59 @@ void main()
 			hitColor = vec3(triangles[i + 12], triangles[i + 13], triangles[i + 14]);
 		}
 	}
+	
+	//calculate illumination of point on closest object
+	float illumination = 0.0f;
+	float lightIntensity = 1.0f / (lengths[3] / 7.0f);
+	vec3 hitPos = rayOrigin + t * rayDirection;
+	for (int i = 0; i < lengths[3]; i += 7)
+	{
+		vec3 lightPos = vec3(lights[i], lights[i + 1], lights[i + 2]);
+		float distanceToLight = length(lightPos - hitPos);
+		vec3 shadowRayOrigin = hitPos;
+		vec3 shadowRayDirection = normalize(lightPos - hitPos);
+		float shadowRayT = -1;
+		for (int i = 0; i < lengths[1]; i += 11)
+		{
+			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, vec3(spheres[i], spheres[i + 1], spheres[i + 2]), spheres[i + 3]);
+			if (result > epsilon && result < distanceToLight)
+			{
+				shadowRayT = result;
+				break;
+			}
+		}
+		if (shadowRayT < 0)
+		{
+			for (int i = 0; i < lengths[0]; i += 13)
+			{
+				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, vec3(planes[i], planes[i + 1], planes[i + 2]), vec3(planes[i + 3], planes[i + 4], planes[i + 5]));
+				if (result > epsilon && result < distanceToLight)
+				{
+					shadowRayT = result;
+					break;
+				}
+			}
+			if (shadowRayT < 0)
+			{
+				for (int i = 0; i < lengths[2]; i += 19)
+				{
+					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, vec3(triangles[i], triangles[i + 1], triangles[i + 2]),
+						vec3(triangles[i + 3], triangles[i + 4], triangles[i + 5]),
+						vec3(triangles[i + 6], triangles[i + 7], triangles[i + 8]),
+						vec3(triangles[i + 9], triangles[i + 10], triangles[i + 11]));
+					if (result > epsilon && result < distanceToLight)
+					{
+						shadowRayT = result;
+						break;
+					}
+				}
+			}
+		}
+		if (shadowRayT < 0)
+			illumination += lightIntensity;
+	}
+	hitColor = illumination * hitColor;
+
+	//output result of calculations
 	outputColor = vec4(hitColor, 1.0f);
 }
