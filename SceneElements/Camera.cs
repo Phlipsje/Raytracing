@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -55,7 +56,45 @@ public class Camera
         //Rotate around Y axis
         RightDirection = new Vector3(ViewDirection.Z, ViewDirection.Y, -ViewDirection.X);
     }
-    
+    /// <summary>
+    /// Creates camera by rotating a camera facing in the z direction, with default 1.6/9 aspect ratio and 1.0 units focal length
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="horizontalRotation"></param>angle in radians
+    /// <param name="verticalRotation"></param>angle in radians
+    public Camera(Vector3 position, float horizontalRotation, float verticalRotation)
+    {
+        Position = position;
+        ViewDirection = new Vector3(0f, 0f, 1f);
+        RightDirection = new Vector3(1f, 0f, 0f);
+        DistanceToCenter = 1f;
+        Width = 1.6f;
+        Height = 0.9f;
+        RotateHorizontal(horizontalRotation);
+        RotateVertical(verticalRotation);
+    }
+
+    /// <summary>
+    /// Creates camera by rotating a camera facing in the z direction
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="horizontalRotation"></param>angle in radians
+    /// <param name="verticalRotation"></param>angle in radians
+    /// <param name="distanceToCenter"></param>focal length
+    /// <param name="width"></param>width of the camera plane
+    /// <param name="height"></param>height of the camera plane
+    public Camera(Vector3 position, float horizontalRotation, float verticalRotation, float distanceToCenter, float width, float height)
+    {
+        Position = position;
+        ViewDirection = new Vector3(0f, 0f, 1f);
+        RightDirection = new Vector3(1f, 0f, 0f);
+        DistanceToCenter = 1f;
+        Width = 1.6f;
+        Height = 0.9f;
+        RotateHorizontal(horizontalRotation);
+        RotateVertical(verticalRotation);
+    }
+
     /// <summary>
     /// Constructs a camera with custom values, make sure viewDirection and rightDirection are orthogonal and oriented in the right way
     /// </summary>
@@ -84,5 +123,18 @@ public class Camera
     {
         ViewDirection = viewDirection.Normalized();
         RightDirection = rightDirection.Normalized();
+    }
+    public void RotateHorizontal(float radianAngle)
+    {
+        //didn't expect this to work this well lol, literally chose some random function by feeling
+        Quaternion quat = Quaternion.FromAxisAngle(Vector3.UnitY, radianAngle);
+        ViewDirection = Vector3.Transform(ViewDirection, quat);
+        RightDirection = Vector3.Transform(RightDirection, quat);
+    }
+    public void RotateVertical(float radianAngle)
+    {
+        Quaternion quat = Quaternion.FromAxisAngle(RightDirection, radianAngle);
+        ViewDirection = Vector3.Transform(ViewDirection, quat);
+        RightDirection = Vector3.Transform(RightDirection, quat);
     }
 }

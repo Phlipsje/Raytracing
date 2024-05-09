@@ -47,6 +47,7 @@ namespace OpenTK
         int screenID;        // unique integer identifier of the OpenGL texture
         RayTracer? app;      // instance of the application
         bool terminated = false; // application terminates gracefully when this is true
+        bool lastMouseEnabled = false;
 
         // The following variables are only needed in Modern OpenGL
         public int vertexArrayObject;
@@ -174,13 +175,25 @@ namespace OpenTK
             base.OnUpdateFrame(e);
             // called once per frame; app logic
             InputHelper.keyBoard = KeyboardState;
+            InputHelper.mouse = MouseState;
             if (InputHelper.keyBoard[Keys.Escape]) terminated = true;
         }
         protected override void OnRenderFrame(FrameEventArgs e)
         {
             base.OnRenderFrame(e);
             // called once per frame; render
-            if (app != null) app.Tick();
+            if (app != null)
+            {
+                app.Tick();
+                if (app.MouseEnabled != lastMouseEnabled)
+                {
+                    if (app.MouseEnabled)
+                        this.CursorState = CursorState.Hidden;
+                    else
+                        this.CursorState = CursorState.Normal;
+                }
+                lastMouseEnabled = app.MouseEnabled;
+            }
             if (terminated)
             {
                 Close();

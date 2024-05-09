@@ -7,17 +7,19 @@ using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using System;
 using INFOGR2024Template.SceneElements;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace OpenTK
 {
     class RayTracer
     {
+        public CameraMode CameraMode = CameraMode.OpenGL;
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
         int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_ligths, uniform_lengths;
         float[] planesData, spheresData, trianglesData, cameraData, lightsData;
-        public CameraMode CameraMode = CameraMode.OpenGL;
+        public bool MouseEnabled = false;
         private Camera camera => scene.Camera;
         private IScene scene;
         // constructor
@@ -465,12 +467,46 @@ namespace OpenTK
         #endregion
         void HandleInput()
         {
-            //moving camera
+            float minimumPlaneDistance = 0.05f;
             float delta = 1 / 60f;
-            float speed = 1f;
-            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftShift))
-                speed = 5f;
+            float speed = 3f;
+            float keySensitivity = 0.3f;
+            float mouseSensitivity = 0.05f;
+            float mouseScrollSpeed = 5f;
+            float zoomSpeed = 0.5f;
             Vector3 moveDirection = Vector3.Zero;
+
+            //mouse input
+            if (InputHelper.keyBoard.IsKeyReleased(Windowing.GraphicsLibraryFramework.Keys.M))
+                MouseEnabled = !MouseEnabled;
+            if(MouseEnabled)
+            {
+                //rotating
+                camera.RotateHorizontal(delta * mouseSensitivity * InputHelper.mouse.Delta.X * MathF.PI);
+                camera.RotateVertical(delta * mouseSensitivity * InputHelper.mouse.Delta.Y * MathF.PI);
+                //zooming
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + delta * InputHelper.mouse.ScrollDelta.Y * mouseScrollSpeed);
+            }
+
+            //zooming
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Z))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + delta * zoomSpeed);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.X))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter - delta * zoomSpeed);
+
+            //rotating with arrow keys
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Right))
+                camera.RotateHorizontal(delta * keySensitivity * MathF.PI);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Left))
+                camera.RotateHorizontal(delta * keySensitivity * -MathF.PI);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Up))
+                camera.RotateVertical(delta * keySensitivity * -MathF.PI);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Down))
+                camera.RotateVertical(delta * keySensitivity * MathF.PI);
+
+            //moving
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftShift))
+                speed *= 3f;
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.A))
                 moveDirection -= camera.RightDirection;
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D))
@@ -479,7 +515,11 @@ namespace OpenTK
                 moveDirection  += new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.S))
                 moveDirection -= new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
-            if(moveDirection != Vector3.Zero)
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Space))
+                moveDirection += new Vector3(0, 1, 0);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftControl))
+                moveDirection -= new Vector3(0, 1, 0);
+            if (moveDirection != Vector3.Zero)
                 camera.Position += moveDirection.Normalized() * speed * delta;
 
             //switching rendering

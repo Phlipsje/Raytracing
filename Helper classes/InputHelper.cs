@@ -8,4 +8,5 @@ namespace OpenTK.Helper_classes;
 public static class InputHelper
 {
     public static KeyboardState keyBoard;
+    public static MouseState mouse;
 }

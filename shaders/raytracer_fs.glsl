@@ -18,7 +18,7 @@ uniform float[4] lengths;
 //shadow acne prevention margin
 const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
-const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
+const vec3 skyColor = ambiantLight;
 
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
