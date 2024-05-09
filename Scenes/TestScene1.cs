@@ -36,9 +36,9 @@ namespace INFOGR2024Template.Scenes
                 new Sphere(new Vector3(-2, 0.8f, -2) + offset, 0.8f, new Material(Color4.Purple)),
                 new Plane(new Vector3(0, 0, 0) + offset, new Vector3(0, 1, 0), new Material(Color4.White))
             };
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Yellow))).ToList();
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Blue))).ToList();
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise))).ToList();
+            //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Yellow))).ToList();
+            //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Blue))).ToList();
+            //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise))).ToList();
             float lampExtraDistance = 10f;
             PointLights = new List<Vector3>
             {

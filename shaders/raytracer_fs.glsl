@@ -21,6 +21,7 @@ const float epsilon = 0.001f;
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
 
+//Methods that are used have to be declared before they are used, so main() is at the bottom
 float IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
 {
 	vec3 v = rayOrigin - center;

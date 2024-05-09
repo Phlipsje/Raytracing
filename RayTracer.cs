@@ -15,7 +15,7 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_ligths, uniform_lengths;
+        int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_lights, uniform_lengths;
         float[] planesData, spheresData, trianglesData, cameraData, lightsData;
         public CameraMode CameraMode = CameraMode.OpenGL;
         private Camera camera => scene.Camera;
@@ -30,7 +30,7 @@ namespace OpenTK
         {
             ScreenHelper.Resize(1280, 720);
 
-            //these lines togehter with the similar one in RenderGL somehow fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
+            //these lines together with the similar one in RenderGL somehow fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
             vertexArrayObject = GL.GenVertexArray();
             GL.BindVertexArray(vertexArrayObject);
 
@@ -68,10 +68,10 @@ namespace OpenTK
             uniform_triangles = GL.GetUniformLocation(programID, "triangles");
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
-            uniform_ligths = GL.GetUniformLocation(programID, "lights");
+            uniform_lights = GL.GetUniformLocation(programID, "lights");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
-            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_ligths);
+            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_lights);
             Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));
             SendPrimitivesToShader();
 
@@ -120,7 +120,7 @@ namespace OpenTK
                 GL.UseProgram(programID);
 
                 //execute shaders
-                //this line togetjher with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
+                //this line together with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
                 GL.BindVertexArray(vertexArrayObject);
                 GL.EnableVertexAttribArray(attribute_vPosition);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
@@ -368,7 +368,7 @@ namespace OpenTK
                     spheresData[7 + offset] = 0f;
                     spheresData[8 + offset] = 0f;
                     spheresData[9 + offset] = 0f;
-                    //space for specularity exponent n
+                    //space for specular exponent n
                     spheresData[10 + offset] = 0f;
                     sphereCounter++;
                 }
@@ -443,7 +443,7 @@ namespace OpenTK
                 //space for light intensity
                 lightsData[6 + offset] = 0f;
             }
-                float[] lengths = new float[]
+            float[] lengths = new float[]
             {
                 planesData.Length, spheresData.Length, trianglesData.Length, lightsData.Length
             };
@@ -452,7 +452,7 @@ namespace OpenTK
             GL.Uniform1(uniform_planes, planesData.Length, planesData);
             GL.Uniform1(uniform_triangles, trianglesData.Length, trianglesData);
             GL.Uniform1(uniform_spheres, spheresData.Length, spheresData);
-            GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
+            GL.Uniform1(uniform_lights, lightsData.Length, lightsData);
             GL.Uniform1(uniform_lengths, lengths.Length, lengths);
         }
         private void LoadShader(String name, ShaderType type, int program, out int ID)
