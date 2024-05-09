@@ -22,7 +22,7 @@ public class Camera
     {
         get
         {
-            /* This method did not seem to work:
+            /*This method did not seem to work:
             Quaternion quat = Quaternion.FromEulerAngles(new Vector3(0.5f * (float)Math.PI, 0, 0));
             Vector3 vec = Vector3.Transform(ViewDirection, quat);
             return vec;*/

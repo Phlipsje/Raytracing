@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Helper_classes;
@@ -43,7 +44,7 @@ namespace OpenTK
          */
         public const bool allowPrehistoricOpenGL = false;
 
-        int screenID;            // unique integer identifier of the OpenGL texture
+        int screenID;        // unique integer identifier of the OpenGL texture
         RayTracer? app;      // instance of the application
         bool terminated = false; // application terminates gracefully when this is true
 
@@ -56,7 +57,7 @@ namespace OpenTK
         // - UV
         readonly float[] vertices =
         { //  X      Y     Z     U     V
-            -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom-left  2-----3 triangles:
+             -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom-left  2-----3 triangles:
              1.0f, -1.0f, 0.0f, 1.0f, 1.0f, // bottom-right | \   |     012
             -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, // top-left     |   \ |     123
              1.0f,  1.0f, 0.0f, 1.0f, 0.0f, // top-right    0-----1
@@ -76,8 +77,6 @@ namespace OpenTK
         {
             base.OnLoad();
             // called during application initialization
-            GL.ClearColor(0, 0, 0, 0);
-            GL.Disable(EnableCap.DepthTest);
             Surface screen = new(ClientSize.X, ClientSize.Y);
             Surface.openTKApplication = this;
             ScreenHelper.Initialize(screen);
@@ -85,7 +84,6 @@ namespace OpenTK
             screenID = ScreenHelper.screen.GenTexture();
             if (allowPrehistoricOpenGL)
             {
-                GL.Enable(EnableCap.Texture2D);
                 GL.Hint(HintTarget.PerspectiveCorrectionHint, HintMode.Nicest);
             }
             else
@@ -138,16 +136,18 @@ namespace OpenTK
                 // send all the following draw calls through this pipeline
                 GL.UseProgram(programID);
                 // tell the VAO which part of the VBO data should go to each shader input
-                int location = GL.GetAttribLocation(programID, "vPosition");
-                GL.EnableVertexAttribArray(location);
-                GL.VertexAttribPointer(location, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
-                location = GL.GetAttribLocation(programID, "vUV");
-                GL.EnableVertexAttribArray(location);
-                GL.VertexAttribPointer(location, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+                int locationPos = GL.GetAttribLocation(programID, "vPosition");
+                GL.EnableVertexAttribArray(locationPos);
+                GL.VertexAttribPointer(locationPos, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+                int locationUV = GL.GetAttribLocation(programID, "vUV");
+                GL.EnableVertexAttribArray(locationUV);
+                GL.VertexAttribPointer(locationUV, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
                 // connect the texture to the shader uniform variable
                 GL.ActiveTexture(TextureUnit.Texture0);
                 GL.BindTexture(TextureTarget.Texture2D, screenID);
                 GL.Uniform1(GL.GetUniformLocation(programID, "pixels"), 0);
+
+                Debug.WriteLine(programID + ", " + locationPos + ", " + locationUV);
             }
             app.Init();
         }
@@ -189,6 +189,14 @@ namespace OpenTK
             // convert MyApplication.screen to OpenGL texture
             if (app != null)
             {
+                //preparation code that used to be in OnLoad, yet it has to occur every frame according to practical 0 exercise
+                GL.ClearColor(0, 0, 0, 0);
+                if (allowPrehistoricOpenGL)
+                    GL.Enable(EnableCap.Texture2D);
+                GL.Disable(EnableCap.DepthTest);
+                GL.Color3(1.0f, 1.0f, 1.0f);
+
+                GL.UseProgram(programID);
                 GL.BindTexture(TextureTarget.Texture2D, screenID);
                 GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
                                ScreenHelper.screen.width, ScreenHelper.screen.height, 0,
@@ -198,19 +206,27 @@ namespace OpenTK
                 // draw screen filling quad
                 if (allowPrehistoricOpenGL)
                 {
+                    //I believe this code draws the screen plane, the one of type Surface where we update the pixels, so it might not have to occur when in OpenGL rendering mode
                     GL.Begin(PrimitiveType.Quads);
                     GL.TexCoord2(0.0f, 1.0f); GL.Vertex2(-1.0f, -1.0f);
                     GL.TexCoord2(1.0f, 1.0f); GL.Vertex2(1.0f, -1.0f);
                     GL.TexCoord2(1.0f, 0.0f); GL.Vertex2(1.0f, 1.0f);
                     GL.TexCoord2(0.0f, 0.0f); GL.Vertex2(-1.0f, 1.0f);
                     GL.End();
+
+                    // prepare for generic OpenGL rendering (code from practical 0 exercises)
+                    GL.Enable(EnableCap.DepthTest);
+                    GL.Disable(EnableCap.Texture2D);
+                    GL.Clear(ClearBufferMask.DepthBufferBit);
                 }
-                else
+                else if(app.CameraMode != CameraMode.OpenGL)
                 {
-                    GL.BindVertexArray(vertexArrayObject);
                     GL.UseProgram(programID);
+                    GL.BindVertexArray(vertexArrayObject);
                     GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
                 }
+                //render the scene after preparations are finished, notice this occurs after tick.
+                app.RenderGL();
             }
             // tell OpenTK we're done rendering
             SwapBuffers();

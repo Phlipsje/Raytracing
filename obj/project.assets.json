@@ -447,19 +447,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\knpg2\\.nuget\\packages\\": {}
+    "C:\\Users\\kboer\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\knpg2\\Documents\\GitHub\\Raytracing\\INFOGR2024Template.csproj",
+      "projectUniqueName": "C:\\Users\\kboer\\OneDrive\\Documenten\\GitHub\\Unity projects\\Raytracing\\INFOGR2024Template.csproj",
       "projectName": "INFOGR2024Template",
-      "projectPath": "C:\\Users\\knpg2\\Documents\\GitHub\\Raytracing\\INFOGR2024Template.csproj",
-      "packagesPath": "C:\\Users\\knpg2\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\knpg2\\Documents\\GitHub\\Raytracing\\obj\\",
+      "projectPath": "C:\\Users\\kboer\\OneDrive\\Documenten\\GitHub\\Unity projects\\Raytracing\\INFOGR2024Template.csproj",
+      "packagesPath": "C:\\Users\\kboer\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\kboer\\OneDrive\\Documenten\\GitHub\\Unity projects\\Raytracing\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\knpg2\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\kboer\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
