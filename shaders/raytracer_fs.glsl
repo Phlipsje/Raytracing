@@ -1,27 +1,21 @@
-#version 330
+#version 430
 out vec4 outputColor;
-//1: you have to specify how big the arrays are going to be
-//2: the max space available for uniform variables is a mere 4096 components/16192 bytes. 
-//So i chose the biggest possible values for now but...
-//To meet the 5000 primitive criteria we will have to look into SSBO's or texture buffers. And we could probably compress some of the data. 
-//Additional bullshit: my integrated gpu does allow 4096 components WHICH IS THE MINIMUM REQUIREMNT OF OPENGL. But my dedicated rtx 3050 gpu fails to compile when using more then 1024 components WTF
-//max 5 planes, don't see why we need more
-uniform float[65] planes;
-//max 90 spheres, 990 floats. OR on dedicated graphics max 10 spheres, 110 floats
-uniform float[110] spheres;
-//max 150 triangles (barely a simple model) OR on dedicated graphics max 40 triangles, 760 floats
-uniform float[760] triangles;
-//max 10 lights
-uniform float[60] lights;
+//max 50 lights
+uniform float[300] lights;
 //the lengths of each of the primitive arrays, in same order as they are declared
-uniform float[4] lengths;
+uniform int[4] lengths;
+//Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
+uniform float[14] camera;
+//SSBO for primitive data
+layout(binding = 0, std430) readonly buffer ssbo1
+{
+	float primitives[];
+};
+
 //shadow acne prevention margin
 const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = ambiantLight;
-
-//Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
-uniform float[14] camera;
 
 //first three values of vec4 form the normal vector, last value is the t value
 vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
@@ -82,44 +76,48 @@ void main()
 	vec3 hitSpecularColor = vec3(0, 0, 0);
 	float hitSpecularity = 1.0f;
 	vec3 hitNormal = vec3(0, 0, 0);
-	for (int i = 0; i < lengths[1]; i += 11)
+	for (int i = 0; i < lengths[0]; i += 11)
 	{
-		vec4 result = IntersectSphere(rayOrigin, rayDirection, vec3(spheres[i], spheres[i+1], spheres[i+2]), spheres[i + 3]);
+		vec4 result = IntersectSphere(rayOrigin, rayDirection, vec3(primitives[i], primitives[i+1], primitives[i+2]), primitives[i + 3]);
 		if (result.w > 0 && result.w < t)
 		{
 			t = result.w;
-			hitColor = vec3( spheres[i+4], spheres[i+5], spheres[i+6]);
-			hitSpecularColor = vec3(spheres[i + 7], spheres[i + 8], spheres[i + 9]);
-			hitSpecularity = spheres[i + 10];
+			hitColor = vec3( primitives[i+4], primitives[i+5], primitives[i+6]);
+			hitSpecularColor = vec3(primitives[i + 7], primitives[i + 8], primitives[i + 9]);
+			hitSpecularity = primitives[i + 10];
 			hitNormal = result.xyz;
 		}
 	}
-	for (int i = 0; i < lengths[0]; i += 13)
+	int offset = lengths[0];
+	int end = offset + lengths[1];
+	for (int i = offset; i < end; i += 13)
 	{
-		vec3 planeNormal = vec3(planes[i + 3], planes[i + 4], planes[i + 5]);
-		float result = IntersectPlane(rayOrigin, rayDirection, vec3(planes[i], planes[i + 1], planes[i + 2]), planeNormal);
+		vec3 planeNormal = vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]);
+		float result = IntersectPlane(rayOrigin, rayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), planeNormal);
 		if (result > 0 && result < t)
 		{
 			t = result;
-			hitColor = vec3(planes[i + 6], planes[i + 7], planes[i + 8]);
-			hitSpecularColor = vec3(planes[i + 9], planes[i + 10], planes[i + 11]);
-			hitSpecularity = planes[i + 12];
+			hitColor = vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]);
+			hitSpecularColor = vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]);
+			hitSpecularity = primitives[i + 12];
 			hitNormal = planeNormal;
 		}
 	}
-	for (int i = 0; i < lengths[2]; i += 19)
+	offset += lengths[1];
+	end = offset + lengths[2];
+	for (int i = offset; i < end; i += 19)
 	{
-		vec3 triangleNormal = vec3(triangles[i + 9], triangles[i + 10], triangles[i + 11]);
-		float result = IntersectTriangle(rayOrigin, rayDirection, vec3(triangles[i], triangles[i + 1], triangles[i + 2]),
-			vec3(triangles[i + 3], triangles[i + 4], triangles[i + 5]), 
-			vec3(triangles[i + 6], triangles[i + 7], triangles[i + 8]), 
+		vec3 triangleNormal = vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]);
+		float result = IntersectTriangle(rayOrigin, rayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
+			vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]), 
+			vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]), 
 			triangleNormal);
 		if (result > 0 && result < t)
 		{
 			t = result;
-			hitColor = vec3(triangles[i + 12], triangles[i + 13], triangles[i + 14]);
-			hitSpecularColor = vec3(triangles[i + 15], triangles[i + 16], triangles[i + 17]);
-			hitSpecularity = triangles[i + 18];
+			hitColor = vec3(primitives[i + 12], primitives[i + 13], primitives[i + 14]);
+			hitSpecularColor = vec3(primitives[i + 15], primitives[i + 16], primitives[i + 17]);
+			hitSpecularity = primitives[i + 18];
 			hitNormal = triangleNormal;
 		}
 	}
@@ -140,9 +138,9 @@ void main()
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
 		float shadowRayT = -1;
-		for (int i = 0; i < lengths[1]; i += 11)
+		for (int i = 0; i < lengths[0]; i += 11)
 		{
-			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, vec3(spheres[i], spheres[i + 1], spheres[i + 2]), spheres[i + 3]).w;
+			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), primitives[i + 3]).w;
 			if (result > epsilon && result < distanceToLight)
 			{
 				shadowRayT = result;
@@ -151,9 +149,11 @@ void main()
 		}
 		if (shadowRayT < 0)
 		{
-			for (int i = 0; i < lengths[0]; i += 13)
+			int offset = lengths[0];
+			int end = offset + lengths[1];
+			for (int i = offset; i < end; i += 13)
 			{
-				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, vec3(planes[i], planes[i + 1], planes[i + 2]), vec3(planes[i + 3], planes[i + 4], planes[i + 5]));
+				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]));
 				if (result > epsilon && result < distanceToLight)
 				{
 					shadowRayT = result;
@@ -162,12 +162,14 @@ void main()
 			}
 			if (shadowRayT < 0)
 			{
-				for (int i = 0; i < lengths[2]; i += 19)
+				offset += lengths[1];
+				end = offset + lengths[2];
+				for (int i = offset; i < end; i += 19)
 				{
-					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, vec3(triangles[i], triangles[i + 1], triangles[i + 2]),
-						vec3(triangles[i + 3], triangles[i + 4], triangles[i + 5]),
-						vec3(triangles[i + 6], triangles[i + 7], triangles[i + 8]),
-						vec3(triangles[i + 9], triangles[i + 10], triangles[i + 11]));
+					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
+						vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]),
+						vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]),
+						vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]));
 					if (result > epsilon && result < distanceToLight)
 					{
 						shadowRayT = result;

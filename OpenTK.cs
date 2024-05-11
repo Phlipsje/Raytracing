@@ -207,7 +207,6 @@ namespace OpenTK
                 if (allowPrehistoricOpenGL)
                     GL.Enable(EnableCap.Texture2D);
                 GL.Disable(EnableCap.DepthTest);
-                GL.Color3(1.0f, 1.0f, 1.0f);
 
                 GL.UseProgram(programID);
                 GL.BindTexture(TextureTarget.Texture2D, screenID);

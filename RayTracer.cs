@@ -17,8 +17,9 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_ligths, uniform_lengths;
-        float[] planesData, spheresData, trianglesData, cameraData, lightsData;
+        int uniform_camera, uniform_ligths, uniform_lengths;
+        int ssbo_primitives;
+        float[] primitivesData, cameraData, lightsData;
         public bool MouseEnabled = false;
         private Camera camera => scene.Camera;
         private IScene scene;
@@ -65,17 +66,13 @@ namespace OpenTK
 
             //gain access to input variables
             attribute_vPosition = GL.GetAttribLocation(programID, "vPosition");
-            uniform_planes = GL.GetUniformLocation(programID, "planes");
-            uniform_spheres = GL.GetUniformLocation(programID, "spheres");
-            uniform_triangles = GL.GetUniformLocation(programID, "triangles");
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
-            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_ligths);
-            Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));
-            SendPrimitivesToShader();
+            Debug.WriteLine("primitivesLoc: " + ssbo_primitives + ". ligthsLoc: " + uniform_ligths);
+            Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));       
 
             //bind buffer for positions
             GL.UseProgram(programID);
@@ -89,6 +86,7 @@ namespace OpenTK
              VertexAttribPointerType.Float,
             false, 0, 0
              );
+            SendPrimitivesToShader();
         }
         // tick: renders one frame
         public void Tick()
@@ -120,7 +118,6 @@ namespace OpenTK
             {
                 //make sure we are using the right program, and thus the right shaders
                 GL.UseProgram(programID);
-
                 //execute shaders
                 //this line togetjher with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
                 GL.BindVertexArray(vertexArrayObject);
@@ -306,7 +303,6 @@ namespace OpenTK
         private void PrepareRenderOpenGL()
         {
             GL.UseProgram(programID);
-
             //fill float array for camera data and send it to shader.
             cameraData = new float[]
             {
@@ -321,10 +317,7 @@ namespace OpenTK
         private void SendPrimitivesToShader()
         {
             //shader limit values:
-            int maxSpheres = 90;
-            int maxPlanes = 5;
-            int maxTriangles = 150;
-            int maxLights = 10;
+            int maxLights = 50;
 
             //fill float arrays for primitives data
             List<IPrimitive> primitives = scene.Primitives;
@@ -340,96 +333,87 @@ namespace OpenTK
                 else
                     trianglesAmount++;
             }
-            spheresAmount = Math.Min(spheresAmount, maxSpheres);
-            planesAmount = Math.Min(planesAmount, maxPlanes);
-            trianglesAmount = Math.Min(trianglesAmount, maxTriangles);
-            spheresData = new float[spheresAmount * 11];
-            planesData = new float[planesAmount * 13];
-            trianglesData = new float[trianglesAmount * 19];
+            primitivesData = new float[spheresAmount * 11 + planesAmount * 13 + trianglesAmount * 19];
+
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
+            int planesOffset = spheresAmount * 11;
+            int trianglesOffset = planesOffset + planesAmount * 13;
             for (int i = 0; i < primitives.Count; i++)
             {
                 IPrimitive primitive = primitives[i];
                 if (primitive is Sphere)
                 {
-                    if (sphereCounter > maxSpheres - 1)
-                        continue;
                     Sphere sphere = (Sphere)primitive;
                     int offset = 11 * sphereCounter;
-                    spheresData[0 + offset] = sphere.Center.X;
-                    spheresData[1 + offset] = sphere.Center.Y;
-                    spheresData[2 + offset] = sphere.Center.Z;
-                    spheresData[3 + offset] = sphere.Radius;
+                    primitivesData[0 + offset] = sphere.Center.X;
+                    primitivesData[1 + offset] = sphere.Center.Y;
+                    primitivesData[2 + offset] = sphere.Center.Z;
+                    primitivesData[3 + offset] = sphere.Radius;
                     //diffuse color
-                    spheresData[4 + offset] = sphere.Material.DiffuseColor.R;
-                    spheresData[5 + offset] = sphere.Material.DiffuseColor.G;
-                    spheresData[6 + offset] = sphere.Material.DiffuseColor.B;
+                    primitivesData[4 + offset] = sphere.Material.DiffuseColor.R;
+                    primitivesData[5 + offset] = sphere.Material.DiffuseColor.G;
+                    primitivesData[6 + offset] = sphere.Material.DiffuseColor.B;
                     //space for specular color
-                    spheresData[7 + offset] = sphere.Material.SpecularColor.R;
-                    spheresData[8 + offset] = sphere.Material.SpecularColor.G;
-                    spheresData[9 + offset] = sphere.Material.SpecularColor.B;
+                    primitivesData[7 + offset] = sphere.Material.SpecularColor.R;
+                    primitivesData[8 + offset] = sphere.Material.SpecularColor.G;
+                    primitivesData[9 + offset] = sphere.Material.SpecularColor.B;
                     //space for specularity exponent n
-                    spheresData[10 + offset] = sphere.Material.SpecularWidth;
+                    primitivesData[10 + offset] = sphere.Material.SpecularWidth;
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
                 {
-                    if (planesCounter > maxPlanes - 1)
-                        continue;
                     Plane plane = (Plane)primitive;
-                    int offset = 13 * planesCounter;
-                    planesData[0 + offset] = plane.Center.X;
-                    planesData[1 + offset] = plane.Center.Y;
-                    planesData[2 + offset] = plane.Center.Z;
-                    planesData[3 + offset] = plane.Normal.X;
-                    planesData[4 + offset] = plane.Normal.Y;
-                    planesData[5 + offset] = plane.Normal.Z;
+                    int offset = 13 * planesCounter + planesOffset;
+                    primitivesData[0 + offset] = plane.Center.X;
+                    primitivesData[1 + offset] = plane.Center.Y;
+                    primitivesData[2 + offset] = plane.Center.Z;
+                    primitivesData[3 + offset] = plane.Normal.X;
+                    primitivesData[4 + offset] = plane.Normal.Y;
+                    primitivesData[5 + offset] = plane.Normal.Z;
                     //diffuse color
-                    planesData[6 + offset] = plane.Material.DiffuseColor.R;
-                    planesData[7 + offset] = plane.Material.DiffuseColor.G;
-                    planesData[8 + offset] = plane.Material.DiffuseColor.B;
+                    primitivesData[6 + offset] = plane.Material.DiffuseColor.R;
+                    primitivesData[7 + offset] = plane.Material.DiffuseColor.G;
+                    primitivesData[8 + offset] = plane.Material.DiffuseColor.B;
                     //space for specular color
-                    planesData[9 + offset] = plane.Material.SpecularColor.R;
-                    planesData[10 + offset] = plane.Material.SpecularColor.G;
-                    planesData[11 + offset] = plane.Material.SpecularColor.B;
+                    primitivesData[9 + offset] = plane.Material.SpecularColor.R;
+                    primitivesData[10 + offset] = plane.Material.SpecularColor.G;
+                    primitivesData[11 + offset] = plane.Material.SpecularColor.B;
                     //space for specularity exponent n
-                    planesData[12 + offset] = plane.Material.SpecularWidth;
+                    primitivesData[12 + offset] = plane.Material.SpecularWidth;
                     planesCounter++;
                 }
                 else
                 {
-                    if (trianglesCounter > maxTriangles - 1)
-                        continue;
                     Triangle triangle = (Triangle)primitive;
-                    int offset = 19 * trianglesCounter;
-                    trianglesData[0 + offset] = triangle.PointA.X;
-                    trianglesData[1 + offset] = triangle.PointA.Y;
-                    trianglesData[2 + offset] = triangle.PointA.Z;
-                    trianglesData[3 + offset] = triangle.PointB.X;
-                    trianglesData[4 + offset] = triangle.PointB.Y;
-                    trianglesData[5 + offset] = triangle.PointB.Z;
-                    trianglesData[6 + offset] = triangle.PointC.X;
-                    trianglesData[7 + offset] = triangle.PointC.Y;
-                    trianglesData[8 + offset] = triangle.PointC.Z;
-                    trianglesData[9 + offset] = triangle.Normal.X;
-                    trianglesData[10 + offset] = triangle.Normal.Y;
-                    trianglesData[11 + offset] = triangle.Normal.Z;
+                    int offset = 19 * trianglesCounter + trianglesOffset;
+                    primitivesData[0 + offset] = triangle.PointA.X;
+                    primitivesData[1 + offset] = triangle.PointA.Y;
+                    primitivesData[2 + offset] = triangle.PointA.Z;
+                    primitivesData[3 + offset] = triangle.PointB.X;
+                    primitivesData[4 + offset] = triangle.PointB.Y;
+                    primitivesData[5 + offset] = triangle.PointB.Z;
+                    primitivesData[6 + offset] = triangle.PointC.X;
+                    primitivesData[7 + offset] = triangle.PointC.Y;
+                    primitivesData[8 + offset] = triangle.PointC.Z;
+                    primitivesData[9 + offset] = triangle.Normal.X;
+                    primitivesData[10 + offset] = triangle.Normal.Y;
+                    primitivesData[11 + offset] = triangle.Normal.Z;
                     //diffuse color
-                    trianglesData[12 + offset] = triangle.Material.DiffuseColor.R;
-                    trianglesData[13 + offset] = triangle.Material.DiffuseColor.G;
-                    trianglesData[14 + offset] = triangle.Material.DiffuseColor.B;
+                    primitivesData[12 + offset] = triangle.Material.DiffuseColor.R;
+                    primitivesData[13 + offset] = triangle.Material.DiffuseColor.G;
+                    primitivesData[14 + offset] = triangle.Material.DiffuseColor.B;
                     //space for specular color
-                    trianglesData[15 + offset] = triangle.Material.SpecularColor.R;
-                    trianglesData[16 + offset] = triangle.Material.SpecularColor.G;
-                    trianglesData[17 + offset] = triangle.Material.SpecularColor.B;
+                    primitivesData[15 + offset] = triangle.Material.SpecularColor.R;
+                    primitivesData[16 + offset] = triangle.Material.SpecularColor.G;
+                    primitivesData[17 + offset] = triangle.Material.SpecularColor.B;
                     //space for specularity exponent n
-                    trianglesData[18 + offset] = triangle.Material.SpecularWidth;
+                    primitivesData[18 + offset] = triangle.Material.SpecularWidth;
                     trianglesCounter++;
                 }
             }
-            //only space for ten ligths
             int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
             lightsData = new float[lightsAmount * 6];
             for (int i = 0; i < lightsAmount; i++)
@@ -443,18 +427,22 @@ namespace OpenTK
                 lightsData[4 + offset] = scene.PointLights[i].Intensity.G;
                 lightsData[5 + offset] = scene.PointLights[i].Intensity.B;
             }
-                float[] lengths = new float[]
+                int[] lengths = new int[]
             {
-                planesData.Length, spheresData.Length, trianglesData.Length, lightsData.Length
+                sphereCounter * 11, planesAmount * 13, trianglesAmount * 19, lightsData.Length
             };
             //send the primitives data to the shader
             GL.UseProgram(programID);
-            GL.Uniform1(uniform_planes, planesData.Length, planesData);
-            GL.Uniform1(uniform_triangles, trianglesData.Length, trianglesData);
-            GL.Uniform1(uniform_spheres, spheresData.Length, spheresData);
             GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
             GL.Uniform1(uniform_lengths, lengths.Length, lengths);
-        }
+            //bind buffer for ssbo primitive data
+            ssbo_primitives = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_primitives);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 0, ssbo_primitives);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, primitivesData.Length * sizeof(float), primitivesData, BufferUsageHint.StaticRead);
+        }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {
             ID = GL.CreateShader(type);
