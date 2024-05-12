@@ -22,7 +22,7 @@ namespace OpenTK
         public CameraMode CameraMode = CameraMode.OpenGL;
         private Camera camera => scene.Camera;
         private IScene scene;
-        private ViewDirection viewDirection = ViewDirection.Topdown;
+        private ViewAxis viewAxis = ViewAxis.Topdown;
         // constructor
         public RayTracer()
         {
@@ -97,15 +97,25 @@ namespace OpenTK
             ScreenHelper.Clear();
             scene.Tick();
             HandleInput();
+
+            if (InputHelper.keyBoard.IsKeyPressed(Keys.F1))
+            {
+                CameraMode = CameraMode.OpenGL;
+            }
+            if (InputHelper.keyBoard.IsKeyPressed(Keys.F2))
+            {
+                CameraMode = CameraMode.Debug2D;
+            }
+            
             switch (CameraMode)
             {
                 case CameraMode.Debug2D:
                     if (InputHelper.keyBoard.IsKeyPressed(Keys.D1))
-                        viewDirection = ViewDirection.Topdown;
+                        viewAxis = ViewAxis.Topdown;
                     if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
-                        viewDirection = ViewDirection.SideViewXAxis;
+                        viewAxis = ViewAxis.SideViewXAxis;
                     if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
-                        viewDirection = ViewDirection.SideViewZAxis;
+                        viewAxis = ViewAxis.SideViewZAxis;
                     RenderDebug2D();
                     break;
                 case CameraMode.Debug3D:
@@ -144,19 +154,19 @@ namespace OpenTK
         #region Debug2D
         private void RenderDebug2D()
         {
-            float viewingRadius = 5f;
+            float viewingRadius = 15f;
             int linesPerCircle = 100;
             int exampleRayCount = 10; //Minimum 2
 
-            switch (viewDirection)
+            switch (viewAxis)
             {
-                case ViewDirection.Topdown:
+                case ViewAxis.Topdown:
                     RenderDebugTopDown(viewingRadius, linesPerCircle, exampleRayCount);
                     break;
-                case ViewDirection.SideViewXAxis:
+                case ViewAxis.SideViewXAxis:
                     RenderDebugSideXAxis(viewingRadius, linesPerCircle, exampleRayCount);
                     break;
-                case ViewDirection.SideViewZAxis:
+                case ViewAxis.SideViewZAxis:
                     RenderDebugSideZAxis(viewingRadius, linesPerCircle, exampleRayCount);
                     break;
             }
@@ -321,14 +331,16 @@ namespace OpenTK
             ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
             
             //Draw camera angles
-            Vector2 viewDirection = new(camera.ViewDirection.X, camera.ViewDirection.Z);
-            viewDirection.Normalize();
+            Vector2 viewDirection = new Vector2(camera.ViewDirection.X, camera.ViewDirection.Z).Normalized();
+            if (float.IsNaN(viewDirection.X)) viewDirection.X = 0;
+            if (float.IsNaN(viewDirection.Y)) viewDirection.Y = 0;
             Vector2i pixelPosViewDirectionCamera =
                 ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos + viewDirection));
             ScreenHelper.DrawLine(pixelPositionCamera, pixelPosViewDirectionCamera, Color4.Red);
             
-            Vector2 rightDirection = new(camera.RightDirection.X, camera.RightDirection.Z);
-            rightDirection.Normalize();
+            Vector2 rightDirection = new Vector2(camera.RightDirection.X, camera.RightDirection.Z).Normalized();
+            if (float.IsNaN(rightDirection.X)) rightDirection.X = 0;
+            if (float.IsNaN(rightDirection.Y)) rightDirection.Y = 0;
             Vector2i pixelPosRightDirectionCamera =
                 ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos + rightDirection));
             ScreenHelper.DrawLine(pixelPositionCamera, pixelPosRightDirectionCamera, Color4.Blue);
@@ -340,8 +352,8 @@ namespace OpenTK
             int white = ColorHelper.ColorToInt(Color4.White);
             ScreenHelper.screen.Print("2D debug mode", 3, 3, white);
             ScreenHelper.screen.Print($"({bottomLeftPlane.X},{bottomLeftPlane.Y})", 3, ScreenHelper.screen.height- 20, white);
-            ScreenHelper.screen.Print($"({topRightPlane.X},{topRightPlane.Y})", ScreenHelper.screen.width-70, 3, white);
-            ScreenHelper.screen.Print("X>>", 83, ScreenHelper.screen.height - 20, white);
+            ScreenHelper.screen.Print($"({topRightPlane.X},{topRightPlane.Y})", ScreenHelper.screen.width-85, 3, white);
+            ScreenHelper.screen.Print("X>>", 118, ScreenHelper.screen.height - 20, white);
             ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 80, white);
             ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 65, white);
             ScreenHelper.screen.Print("Z", 3, ScreenHelper.screen.height - 50, white);
@@ -534,14 +546,16 @@ namespace OpenTK
             ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
             
             //Draw camera angles
-            Vector2 viewDirection = new(camera.ViewDirection.Z, camera.ViewDirection.Y);
-            viewDirection.Normalize();
+            Vector2 viewDirection = new Vector2(camera.ViewDirection.Z, camera.ViewDirection.Y).Normalized();
+            if (float.IsNaN(viewDirection.X)) viewDirection.X = 0;
+            if (float.IsNaN(viewDirection.Y)) viewDirection.Y = 0;
             Vector2i pixelPosViewDirectionCamera =
                 ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos + viewDirection));
             ScreenHelper.DrawLine(pixelPositionCamera, pixelPosViewDirectionCamera, Color4.Red);
-            
-            Vector2 rightDirection = new(camera.RightDirection.Z, camera.RightDirection.Y);
-            rightDirection.Normalize();
+
+            Vector2 rightDirection = new Vector2(camera.RightDirection.Z, camera.RightDirection.Y).Normalized();
+            if (float.IsNaN(rightDirection.X)) rightDirection.X = 0;
+            if (float.IsNaN(rightDirection.Y)) rightDirection.Y = 0;
             Vector2i pixelPosRightDirectionCamera =
                 ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos + rightDirection));
             ScreenHelper.DrawLine(pixelPositionCamera, pixelPosRightDirectionCamera, Color4.Blue);
@@ -553,8 +567,8 @@ namespace OpenTK
             int white = ColorHelper.ColorToInt(Color4.White);
             ScreenHelper.screen.Print("2D debug mode", 3, 3, white);
             ScreenHelper.screen.Print($"({bottomLeftPlane.X},{bottomLeftPlane.Y})", 3, ScreenHelper.screen.height- 20, white);
-            ScreenHelper.screen.Print($"({topRightPlane.X},{topRightPlane.Y})", ScreenHelper.screen.width-70, 3, white);
-            ScreenHelper.screen.Print("Z>>", 83, ScreenHelper.screen.height - 20, white);
+            ScreenHelper.screen.Print($"({topRightPlane.X},{topRightPlane.Y})", ScreenHelper.screen.width-85, 3, white);
+            ScreenHelper.screen.Print("Z>>", 118, ScreenHelper.screen.height - 20, white);
             ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 80, white);
             ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 65, white);
             ScreenHelper.screen.Print("Y", 3, ScreenHelper.screen.height - 50, white);
@@ -747,14 +761,16 @@ namespace OpenTK
             ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
             
             //Draw camera angles
-            Vector2 viewDirection = new(camera.ViewDirection.X, camera.ViewDirection.Y);
-            viewDirection.Normalize();
+            Vector2 viewDirection = new Vector2(camera.ViewDirection.X, camera.ViewDirection.Y).Normalized();
+            if (float.IsNaN(viewDirection.X)) viewDirection.X = 0;
+            if (float.IsNaN(viewDirection.Y)) viewDirection.Y = 0;
             Vector2i pixelPosViewDirectionCamera =
                 ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos + viewDirection));
             ScreenHelper.DrawLine(pixelPositionCamera, pixelPosViewDirectionCamera, Color4.Red);
-            
-            Vector2 rightDirection = new(camera.RightDirection.X, camera.RightDirection.Y);
-            rightDirection.Normalize();
+
+            Vector2 rightDirection = new Vector2(camera.RightDirection.X, camera.RightDirection.Y).Normalized();
+            if (float.IsNaN(rightDirection.X)) rightDirection.X = 0;
+            if (float.IsNaN(rightDirection.Y)) rightDirection.Y = 0;
             Vector2i pixelPosRightDirectionCamera =
                 ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos + rightDirection));
             ScreenHelper.DrawLine(pixelPositionCamera, pixelPosRightDirectionCamera, Color4.Blue);
@@ -766,8 +782,8 @@ namespace OpenTK
             int white = ColorHelper.ColorToInt(Color4.White);
             ScreenHelper.screen.Print("2D debug mode", 3, 3, white);
             ScreenHelper.screen.Print($"({bottomLeftPlane.X},{bottomLeftPlane.Y})", 3, ScreenHelper.screen.height- 20, white);
-            ScreenHelper.screen.Print($"({topRightPlane.X},{topRightPlane.Y})", ScreenHelper.screen.width-70, 3, white);
-            ScreenHelper.screen.Print("X>>", 83, ScreenHelper.screen.height - 20, white);
+            ScreenHelper.screen.Print($"({topRightPlane.X},{topRightPlane.Y})", ScreenHelper.screen.width-85, 3, white);
+            ScreenHelper.screen.Print("X>>", 118, ScreenHelper.screen.height - 20, white);
             ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 80, white);
             ScreenHelper.screen.Print("^", 3, ScreenHelper.screen.height - 65, white);
             ScreenHelper.screen.Print("Y", 3, ScreenHelper.screen.height - 50, white);
@@ -803,7 +819,7 @@ namespace OpenTK
         }
         
         //Only used for 2D debug
-        enum ViewDirection
+        enum ViewAxis
         {
             Topdown,
             SideViewXAxis,
