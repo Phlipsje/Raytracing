@@ -80,7 +80,7 @@ namespace INFOGR2024Template.Helper_classes
         /// <returns></returns>
         public static string FilePath(string modelName)
         {
-            return "../../../assets/" + modelName + ".obj";
+            return "../../../assets/" + modelName + ".KarelModel";
         }
     }
 }
