@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using INFOGR2024Template.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 
@@ -27,5 +28,7 @@ namespace INFOGR2024Template.SceneElements
                 return new Tuple<float, Material>(float.MinValue, Material);
             return new Tuple<float, Material>(Vector3.Dot(Center - ray.Origin, Normal) / denominator , Material);
         }
+
+        public BoundingBox BoundingBox { get; set; }
     }
 }

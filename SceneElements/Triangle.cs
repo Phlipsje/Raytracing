@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using INFOGR2024Template.Helper_classes;
 using Microsoft.VisualBasic;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
@@ -66,5 +67,7 @@ namespace INFOGR2024Template.SceneElements
                 return new Tuple<float, Material>(float.MinValue, Material);
             return new Tuple<float, Material>(t, Material);
         }
+
+        public BoundingBox BoundingBox { get; set; }
     }
 }
