@@ -58,6 +58,7 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 	return t;
 }
 
+
 void main()
 {
 	float x = gl_FragCoord.x;
@@ -191,4 +192,13 @@ void main()
 
 	//output result of calculations
 	outputColor = vec4(combinedColor, 1.0f);
+}
+vec3 Texturing1(vec2 uv)
+{
+	
+    //varying pixel color
+    vec3 col = uv.xyx;
+
+    // Output to screen
+    return vec3(col);
 }
