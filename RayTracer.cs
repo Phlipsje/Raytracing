@@ -7,7 +7,7 @@ using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using System;
 using INFOGR2024Template.SceneElements;
-using OpenTK.Windowing.GraphicsLibraryFramework;
+using System.Runtime.InteropServices;
 
 namespace OpenTK
 {
@@ -18,8 +18,11 @@ namespace OpenTK
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
         int uniform_camera, uniform_ligths, uniform_lengths;
-        int ssbo_primitives;
-        float[] primitivesData, cameraData, lightsData;
+        int ssbo_spheres, ssbo_planes, ssbo_triangles;
+        float[] cameraData, lightsData;
+        SphereStruct[] spheresData;
+        PlaneStruct[] planesData;
+        TriangleStruct[] trianglesData;
         public bool MouseEnabled = false;
         private Camera camera => scene.Camera;
         private IScene scene;
@@ -71,7 +74,7 @@ namespace OpenTK
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
-            Debug.WriteLine("primitivesLoc: " + ssbo_primitives + ". ligthsLoc: " + uniform_ligths);
+            Debug.WriteLine("ligthsLoc: " + uniform_ligths);
             Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));       
 
             //bind buffer for positions
@@ -119,7 +122,7 @@ namespace OpenTK
                 //make sure we are using the right program, and thus the right shaders
                 GL.UseProgram(programID);
                 //execute shaders
-                //this line togetjher with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
+                //this line together with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
                 GL.BindVertexArray(vertexArrayObject);
                 GL.EnableVertexAttribArray(attribute_vPosition);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
@@ -333,84 +336,38 @@ namespace OpenTK
                 else
                     trianglesAmount++;
             }
-            primitivesData = new float[spheresAmount * 11 + planesAmount * 13 + trianglesAmount * 19];
+            spheresData = new SphereStruct[spheresAmount];
+            planesData = new PlaneStruct[planesAmount];
+            trianglesData = new TriangleStruct[trianglesAmount];
 
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
-            int planesOffset = spheresAmount * 11;
-            int trianglesOffset = planesOffset + planesAmount * 13;
             for (int i = 0; i < primitives.Count; i++)
             {
                 IPrimitive primitive = primitives[i];
                 if (primitive is Sphere)
                 {
                     Sphere sphere = (Sphere)primitive;
-                    int offset = 11 * sphereCounter;
-                    primitivesData[0 + offset] = sphere.Center.X;
-                    primitivesData[1 + offset] = sphere.Center.Y;
-                    primitivesData[2 + offset] = sphere.Center.Z;
-                    primitivesData[3 + offset] = sphere.Radius;
-                    //diffuse color
-                    primitivesData[4 + offset] = sphere.Material.DiffuseColor.R;
-                    primitivesData[5 + offset] = sphere.Material.DiffuseColor.G;
-                    primitivesData[6 + offset] = sphere.Material.DiffuseColor.B;
-                    //space for specular color
-                    primitivesData[7 + offset] = sphere.Material.SpecularColor.R;
-                    primitivesData[8 + offset] = sphere.Material.SpecularColor.G;
-                    primitivesData[9 + offset] = sphere.Material.SpecularColor.B;
-                    //space for specularity exponent n
-                    primitivesData[10 + offset] = sphere.Material.SpecularWidth;
+                    Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
+                    Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
+                    spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, specularColor, sphere.Material.SpecularWidth);
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
                 {
                     Plane plane = (Plane)primitive;
-                    int offset = 13 * planesCounter + planesOffset;
-                    primitivesData[0 + offset] = plane.Center.X;
-                    primitivesData[1 + offset] = plane.Center.Y;
-                    primitivesData[2 + offset] = plane.Center.Z;
-                    primitivesData[3 + offset] = plane.Normal.X;
-                    primitivesData[4 + offset] = plane.Normal.Y;
-                    primitivesData[5 + offset] = plane.Normal.Z;
-                    //diffuse color
-                    primitivesData[6 + offset] = plane.Material.DiffuseColor.R;
-                    primitivesData[7 + offset] = plane.Material.DiffuseColor.G;
-                    primitivesData[8 + offset] = plane.Material.DiffuseColor.B;
-                    //space for specular color
-                    primitivesData[9 + offset] = plane.Material.SpecularColor.R;
-                    primitivesData[10 + offset] = plane.Material.SpecularColor.G;
-                    primitivesData[11 + offset] = plane.Material.SpecularColor.B;
-                    //space for specularity exponent n
-                    primitivesData[12 + offset] = plane.Material.SpecularWidth;
+                    Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
+                    Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
+                    planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, specularColor, plane.Material.SpecularWidth);
                     planesCounter++;
                 }
                 else
                 {
                     Triangle triangle = (Triangle)primitive;
-                    int offset = 19 * trianglesCounter + trianglesOffset;
-                    primitivesData[0 + offset] = triangle.PointA.X;
-                    primitivesData[1 + offset] = triangle.PointA.Y;
-                    primitivesData[2 + offset] = triangle.PointA.Z;
-                    primitivesData[3 + offset] = triangle.PointB.X;
-                    primitivesData[4 + offset] = triangle.PointB.Y;
-                    primitivesData[5 + offset] = triangle.PointB.Z;
-                    primitivesData[6 + offset] = triangle.PointC.X;
-                    primitivesData[7 + offset] = triangle.PointC.Y;
-                    primitivesData[8 + offset] = triangle.PointC.Z;
-                    primitivesData[9 + offset] = triangle.Normal.X;
-                    primitivesData[10 + offset] = triangle.Normal.Y;
-                    primitivesData[11 + offset] = triangle.Normal.Z;
-                    //diffuse color
-                    primitivesData[12 + offset] = triangle.Material.DiffuseColor.R;
-                    primitivesData[13 + offset] = triangle.Material.DiffuseColor.G;
-                    primitivesData[14 + offset] = triangle.Material.DiffuseColor.B;
-                    //space for specular color
-                    primitivesData[15 + offset] = triangle.Material.SpecularColor.R;
-                    primitivesData[16 + offset] = triangle.Material.SpecularColor.G;
-                    primitivesData[17 + offset] = triangle.Material.SpecularColor.B;
-                    //space for specularity exponent n
-                    primitivesData[18 + offset] = triangle.Material.SpecularWidth;
+                    Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
+                    Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
+                    trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, specularColor, triangle.Material.SpecularWidth);
                     trianglesCounter++;
                 }
             }
@@ -435,13 +392,30 @@ namespace OpenTK
             GL.UseProgram(programID);
             GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
             GL.Uniform1(uniform_lengths, lengths.Length, lengths);
-            //bind buffer for ssbo primitive data
-            ssbo_primitives = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_primitives);
+
+            //bind buffer for the spheres buffer ssbo0 
+            ssbo_spheres = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_spheres);
             //not sure about the order of last two lines
-            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 0, ssbo_primitives);
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 0, ssbo_spheres);
             //not sure about the buffer usage hint here
-            GL.BufferData(BufferTarget.ShaderStorageBuffer, primitivesData.Length * sizeof(float), primitivesData, BufferUsageHint.StaticRead);
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, spheresData.Length * Marshal.SizeOf<SphereStruct>(), spheresData, BufferUsageHint.StaticRead);
+
+            //bind buffer for the planes buffer ssbo0 
+            ssbo_planes = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_planes);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 1, ssbo_planes);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, planesData.Length * Marshal.SizeOf<PlaneStruct>(), planesData, BufferUsageHint.StaticRead);
+
+            //bind buffer for the triangles buffer ssbo0 
+            ssbo_triangles = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_triangles);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 2, ssbo_triangles);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, trianglesData.Length * Marshal.SizeOf<TriangleStruct>(), trianglesData, BufferUsageHint.StaticRead);
         }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {

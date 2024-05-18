@@ -6,14 +6,48 @@ uniform float[300] lights;
 uniform int[4] lengths;
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
-//SSBO for primitive data
-layout(binding = 0, std430) readonly buffer ssbo1
+
+struct Sphere {
+	vec3 center;
+	float radius;
+	vec3 diffuseColor;
+	float specularity;
+	vec3 specularColor;
+};
+struct Plane {
+	vec3 position;
+	vec3 normal;
+	vec3 diffuseColor;
+	vec3 specularColor;
+	float specularity;
+};
+struct Triangle {
+	vec3 pointA;
+	vec3 pointB;
+	vec3 pointC;
+	vec3 normal;
+	vec3 diffuseColor;
+	vec3 specularColor;
+	float specularity;
+};
+//SSBO for sphere primitives
+layout(binding = 0, std430) readonly buffer ssbo0
 {
-	float primitives[];
+	Sphere spheres[];
+};
+//SSBO for plane primitives
+layout(binding = 1, std430) readonly buffer ssbo1
+{
+	Plane planes[];
+};
+//SSBO for triangle primitives
+layout(binding = 2, std430) readonly buffer ssbo2
+{
+	Triangle triangles[];
 };
 
 //shadow acne prevention margin
-const float epsilon = 0.001f;
+const float epsilon = 0.005f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = ambiantLight;
 
@@ -58,6 +92,7 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 	return t;
 }
 
+//This code will be run for each pixel on the screen
 void main()
 {
 	float x = gl_FragCoord.x;
@@ -68,69 +103,79 @@ void main()
 	vec3 bottomRight = vec3(camera[6], camera[7], camera[8]);
 	vec3 topLeft = vec3(camera[9], camera[10], camera[11]);
 
-	//calculate closest object
+	//FOLLOWING SECTION: setup
+	//determine viewray from cameraData
 	vec3 rayOrigin = vec3(camera[0], camera[1], camera[2]);
 	vec3 rayDirection = normalize( (bottomLeft + (x/width) * (bottomRight - bottomLeft) + (y/height) * (topLeft - bottomLeft)) - rayOrigin );
+	//t is the distance to the found intersections, it starts of as float.maxValue, because no intersection will ever return it. If t is this value, no intersections were found.
 	float t = 3.402823466e+38;
+	//we want to save the material values of the primitive which we intersect with.
 	vec3 hitColor = vec3(0, 0, 0);
 	vec3 hitSpecularColor = vec3(0, 0, 0);
 	float hitSpecularity = 1.0f;
+	//we also need to save the normal for the shading calculations later.
 	vec3 hitNormal = vec3(0, 0, 0);
-	for (int i = 0; i < lengths[0]; i += 11)
+
+	//FOLLOWING SECTION: find the closest intersection with all the objects in the scene
+	//intersect with all spheres:
+	for (int i = 0; i < spheres.length(); i++)
 	{
-		vec4 result = IntersectSphere(rayOrigin, rayDirection, vec3(primitives[i], primitives[i+1], primitives[i+2]), primitives[i + 3]);
+		//sphere is the current sphere being looked at
+		Sphere sphere = spheres[i];
+		vec4 result = IntersectSphere(rayOrigin, rayDirection, sphere.center, sphere.radius);
 		if (result.w > 0 && result.w < t)
 		{
+			//result.w is the distance the IntersectSphere call returned
 			t = result.w;
-			hitColor = vec3( primitives[i+4], primitives[i+5], primitives[i+6]);
-			hitSpecularColor = vec3(primitives[i + 7], primitives[i + 8], primitives[i + 9]);
-			hitSpecularity = primitives[i + 10];
+			hitColor = sphere.diffuseColor;
+			hitSpecularColor = sphere.specularColor;
+			hitSpecularity = sphere.specularity;
+			//result.xyz is the normal the IntersectSphere call returned
 			hitNormal = result.xyz;
 		}
 	}
-	int offset = lengths[0];
-	int end = offset + lengths[1];
-	for (int i = offset; i < end; i += 13)
+	//intersect with all planes:
+	for (int i = 0; i < planes.length(); i++)
 	{
-		vec3 planeNormal = vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]);
-		float result = IntersectPlane(rayOrigin, rayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), planeNormal);
+		Plane plane = planes[i];
+		float result = IntersectPlane(rayOrigin, rayDirection, plane.position, plane.normal);
 		if (result > 0 && result < t)
 		{
 			t = result;
-			hitColor = vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]);
-			hitSpecularColor = vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]);
-			hitSpecularity = primitives[i + 12];
-			hitNormal = planeNormal;
+			hitColor = plane.diffuseColor;
+			hitSpecularColor = plane.specularColor;
+			hitSpecularity = plane.specularity;
+			hitNormal = plane.normal;
 		}
 	}
-	offset += lengths[1];
-	end = offset + lengths[2];
-	for (int i = offset; i < end; i += 19)
+	//not changed to readable(and working) code yet.
+	for (int i = 0; i < triangles.length(); i++)
 	{
-		vec3 triangleNormal = vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]);
-		float result = IntersectTriangle(rayOrigin, rayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
-			vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]), 
-			vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]), 
-			triangleNormal);
+		Triangle triangle = triangles[i];
+		float result = IntersectTriangle(rayOrigin, rayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 		if (result > 0 && result < t)
 		{
 			t = result;
-			hitColor = vec3(primitives[i + 12], primitives[i + 13], primitives[i + 14]);
-			hitSpecularColor = vec3(primitives[i + 15], primitives[i + 16], primitives[i + 17]);
-			hitSpecularity = primitives[i + 18];
-			hitNormal = triangleNormal;
+			hitColor = triangle.diffuseColor;
+			hitSpecularColor = triangle.specularColor;
+			hitSpecularity = triangle.specularity;
+			hitNormal = triangle.normal;
 		}
 	}
-	//if nothing got hit, return the color of the sky
+	//if nothing got hit, return the color of the sky, t only changes if any of the primitives got hit by the viewray and t was instantiated to be float.maxValue
 	if (t == 3.402823466e+38)
 	{
 		outputColor = vec4(skyColor, 1.0f);
 		return;
 	}
 
-	//calculate lighting of point on closest objec
+	//FOLLOWING SECTION: calculate lighting of point on closest object
+	//determine location/position of the intersection
 	vec3 hitPos = rayOrigin + t * rayDirection;
+	//combinedColor is the color the pixel will eventually be, each component can be added seperately and the ambient lighting will always be applied so it can happen now.
 	vec3 combinedColor = vec3(hitColor * ambiantLight);
+
+	//Calculate the lighting on the found intersection for each light in the scene:
 	for (int l = 0; l < lengths[3]; l += 6)
 	{
 		vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
@@ -138,46 +183,52 @@ void main()
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
 		float shadowRayT = -1;
-		for (int i = 0; i < lengths[0]; i += 11)
+		//Check all spheres in the scene for an intersection
+		for (int i = 0; i < spheres.length(); i++)
 		{
-			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), primitives[i + 3]).w;
+			Sphere sphere = spheres[i];
+			//we only care about the w component (the distance) of the result.
+			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
 			if (result > epsilon && result < distanceToLight)
 			{
 				shadowRayT = result;
+				//if an intersection was found we can stop early, as we only care about whether there is an object between the lights and not which is the closest.
 				break;
 			}
 		}
+		//Only continue if a intersection hasn't already been found yet
 		if (shadowRayT < 0)
 		{
-			int offset = lengths[0];
-			int end = offset + lengths[1];
-			for (int i = offset; i < end; i += 13)
+			//Check all planes in the scene for an intersection
+			for (int i = 0; i < planes.length(); i++)
 			{
-				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]));
+				Plane plane = planes[i];
+				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, plane.position, plane.normal);
 				if (result > epsilon && result < distanceToLight)
 				{
 					shadowRayT = result;
+					//if an intersection was found we can stop early, as we only care about whether there is an object between the lights and not which is the closest.
 					break;
 				}
 			}
+			//Only continue if a intersection hasn't already been found yet
 			if (shadowRayT < 0)
 			{
-				offset += lengths[1];
-				end = offset + lengths[2];
-				for (int i = offset; i < end; i += 19)
+				//Check all triangles in the scene for an intersection
+				for (int i = 0; i < triangles.length(); i++)
 				{
-					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
-						vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]),
-						vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]),
-						vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]));
+					Triangle triangle = triangles[i];
+					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 					if (result > epsilon && result < distanceToLight)
 					{
 						shadowRayT = result;
+						//if an intersection was found we can stop early, as we only care about whether there is an object between the lights and not which is the closest.
 						break;
 					}
 				}
 			}
 		}
+		//if no objects were in the way of the light, add the appropriate lighting to it.
 		if (shadowRayT < 0)
 		{
 			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
@@ -185,10 +236,11 @@ void main()
 			if (dot(hitNormal, rayDirection) > 0.0f)
 				hitNormal = -hitNormal;
 			vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
+			//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
 			combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity));
 		}
 	}
 
-	//output result of calculations
+	//output result of calculations to the screen
 	outputColor = vec4(combinedColor, 1.0f);
 }
