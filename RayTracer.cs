@@ -351,7 +351,7 @@ namespace OpenTK
                     Sphere sphere = (Sphere)primitive;
                     Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
                     Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
-                    spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, specularColor, sphere.Material.SpecularWidth);
+                    spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth);
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
@@ -359,7 +359,7 @@ namespace OpenTK
                     Plane plane = (Plane)primitive;
                     Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
                     Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
-                    planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, specularColor, plane.Material.SpecularWidth);
+                    planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth);
                     planesCounter++;
                 }
                 else
@@ -367,7 +367,7 @@ namespace OpenTK
                     Triangle triangle = (Triangle)primitive;
                     Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
                     Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
-                    trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, specularColor, triangle.Material.SpecularWidth);
+                    trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth);
                     trianglesCounter++;
                 }
             }

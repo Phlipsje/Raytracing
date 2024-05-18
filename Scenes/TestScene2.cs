@@ -30,8 +30,8 @@ namespace INFOGR2024Template.Scenes
             Primitives = new List<IPrimitive>
             {
                 new Sphere(new Vector3(0, 0.5f, 0), 0.5f, new Material(Color4.Red)),
-                new Sphere(new Vector3(-1.5f, 0.5f, 0), 0.5f, new Material(Color4.Red, new Color4(0.3f, 0.3f, 0.3f, 1f), 3f)),
-                new Sphere(new Vector3(1.5f, 0.5f, 0), 0.5f, new Material(Color4.Red, new Color4(1f, 0f, 0f, 1f), 5f)),
+                new Sphere(new Vector3(-1.5f, 0.5f, 0), 0.5f, new Material(Color4.Red, new Color4(0.3f, 0.3f, 0.3f, 1f), false, 3f)),
+                new Sphere(new Vector3(1.5f, 0.5f, 0), 0.5f, new Material(Color4.Red, new Color4(1f, 0f, 0f, 1f), false, 5f)),
                 new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White))
             };
             float lampExtraDistance = 10f;

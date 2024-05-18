@@ -1,4 +1,11 @@
 #version 430
+//settings
+//shadow acne prevention margin
+const float epsilon = 0.001f;
+const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
+const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
+const int maxBounces = 10;
+
 out vec4 outputColor;
 //max 50 lights
 uniform float[300] lights;
@@ -11,13 +18,15 @@ struct Sphere {
 	vec3 center;
 	float radius;
 	vec3 diffuseColor;
-	float specularity;
+	bool isPureSpecular;
 	vec3 specularColor;
+	float specularity;
 };
 struct Plane {
 	vec3 position;
 	vec3 normal;
 	vec3 diffuseColor;
+	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
 };
@@ -27,6 +36,7 @@ struct Triangle {
 	vec3 pointC;
 	vec3 normal;
 	vec3 diffuseColor;
+	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
 };
@@ -46,11 +56,6 @@ layout(binding = 2, std430) readonly buffer ssbo2
 	Triangle triangles[];
 };
 
-//shadow acne prevention margin
-const float epsilon = 0.005f;
-const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
-const vec3 skyColor = ambiantLight;
-
 //first three values of vec4 form the normal vector, last value is the t value
 vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
 {
@@ -65,7 +70,7 @@ vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radiu
 	float t2 = (-b - rootd) / 2;
 	if (t1 < 0)
 		return vec4(-1, -1, -1, -1);
-	if (t2 <= epsilon)
+	if (t2 < 0)
 	{
 		vec3 normal = normalize((rayOrigin + t1 * rayDirection) - center);
 		return vec4(normal, t1);
@@ -91,7 +96,57 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 		return -1;
 	return t;
 }
-
+void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal)
+{
+	//intersect with all spheres:
+	for (int i = 0; i < spheres.length(); i++)
+	{
+		//sphere is the current sphere being looked at
+		Sphere sphere = spheres[i];
+		vec4 result = IntersectSphere(rayOrigin, rayDirection, sphere.center, sphere.radius);
+		if (result.w > minDistance && result.w < t)
+		{
+			//result.w is the distance the IntersectSphere call returned
+			t = result.w;
+			hitColor = sphere.diffuseColor;
+			hitPureSpecular = sphere.isPureSpecular;
+			hitSpecularColor = sphere.specularColor;
+			hitSpecularity = sphere.specularity;
+			//result.xyz is the normal the IntersectSphere call returned
+			hitNormal = result.xyz;
+		}
+	}
+	//intersect with all planes:
+	for (int i = 0; i < planes.length(); i++)
+	{
+		Plane plane = planes[i];
+		float result = IntersectPlane(rayOrigin, rayDirection, plane.position, plane.normal);
+		if (result > minDistance && result < t)
+		{
+			t = result;
+			hitColor = plane.diffuseColor;
+			hitPureSpecular = plane.isPureSpecular;
+			hitSpecularColor = plane.specularColor;
+			hitSpecularity = plane.specularity;
+			hitNormal = plane.normal;
+		}
+	}
+	//intersect with all triangles
+	for (int i = 0; i < triangles.length(); i++)
+	{
+		Triangle triangle = triangles[i];
+		float result = IntersectTriangle(rayOrigin, rayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
+		if (result > minDistance && result < t)
+		{
+			t = result;
+			hitColor = triangle.diffuseColor;
+			hitPureSpecular = triangle.isPureSpecular;
+			hitSpecularColor = triangle.specularColor;
+			hitSpecularity = triangle.specularity;
+			hitNormal = triangle.normal;
+		}
+	}
+}
 //This code will be run for each pixel on the screen
 void main()
 {
@@ -111,61 +166,52 @@ void main()
 	float t = 3.402823466e+38;
 	//we want to save the material values of the primitive which we intersect with.
 	vec3 hitColor = vec3(0, 0, 0);
+	bool hitPureSpecular = false;
 	vec3 hitSpecularColor = vec3(0, 0, 0);
-	float hitSpecularity = 1.0f;
+	//!!dont remember if this should be 1, probably should be 0, NEED TO TEST!!
+	float hitSpecularity = 1f;
 	//we also need to save the normal for the shading calculations later.
 	vec3 hitNormal = vec3(0, 0, 0);
 
-	//FOLLOWING SECTION: find the closest intersection with all the objects in the scene
-	//intersect with all spheres:
-	for (int i = 0; i < spheres.length(); i++)
+	//Find the closest intersection with all the objects in the scene
+	FindClosestIntersection(rayOrigin, rayDirection, 0, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal);
+
+	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL
+	//value that the final color will be multiplied with, instantiated to be just 1, 1, 1 so it has no effect if no mirrors are used.
+	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
+	int bounces = 0;
+	//Go into "recursion" to calculate mirror reflection
+	while (hitPureSpecular && bounces < maxBounces)
 	{
-		//sphere is the current sphere being looked at
-		Sphere sphere = spheres[i];
-		vec4 result = IntersectSphere(rayOrigin, rayDirection, sphere.center, sphere.radius);
-		if (result.w > 0 && result.w < t)
-		{
-			//result.w is the distance the IntersectSphere call returned
-			t = result.w;
-			hitColor = sphere.diffuseColor;
-			hitSpecularColor = sphere.specularColor;
-			hitSpecularity = sphere.specularity;
-			//result.xyz is the normal the IntersectSphere call returned
-			hitNormal = result.xyz;
-		}
+		//setup
+		mirrorColorMultiplier *= hitSpecularColor;
+		//make sure normal is right way around
+		if (dot(hitNormal, rayDirection) > 0.0f)
+			hitNormal = -hitNormal;
+		//calculate direction of new ray
+		vec3 reflectionDirection = normalize(rayDirection - 2 * dot(rayDirection, hitNormal) * hitNormal);
+		//determine location/position of the intersection
+		vec3 hitPos = rayOrigin + t * rayDirection;
+
+		//create the new ray and reset ray variables
+		rayOrigin = hitPos;
+		rayDirection = reflectionDirection;
+		t = 3.402823466e+38;
+		hitColor = vec3(0, 0, 0);
+		hitPureSpecular = false;
+		hitSpecularColor = vec3(0, 0, 0);
+		hitSpecularity = 1f;
+		hitNormal = vec3(0, 0, 0);
+
+		//calculate new intersection
+		FindClosestIntersection(rayOrigin, rayDirection, epsilon, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal);
+		bounces++;
 	}
-	//intersect with all planes:
-	for (int i = 0; i < planes.length(); i++)
-	{
-		Plane plane = planes[i];
-		float result = IntersectPlane(rayOrigin, rayDirection, plane.position, plane.normal);
-		if (result > 0 && result < t)
-		{
-			t = result;
-			hitColor = plane.diffuseColor;
-			hitSpecularColor = plane.specularColor;
-			hitSpecularity = plane.specularity;
-			hitNormal = plane.normal;
-		}
-	}
-	//not changed to readable(and working) code yet.
-	for (int i = 0; i < triangles.length(); i++)
-	{
-		Triangle triangle = triangles[i];
-		float result = IntersectTriangle(rayOrigin, rayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
-		if (result > 0 && result < t)
-		{
-			t = result;
-			hitColor = triangle.diffuseColor;
-			hitSpecularColor = triangle.specularColor;
-			hitSpecularity = triangle.specularity;
-			hitNormal = triangle.normal;
-		}
-	}
+
 	//if nothing got hit, return the color of the sky, t only changes if any of the primitives got hit by the viewray and t was instantiated to be float.maxValue
 	if (t == 3.402823466e+38)
 	{
-		outputColor = vec4(skyColor, 1.0f);
+		outputColor = vec4(skyColor * mirrorColorMultiplier, 1.0f);
 		return;
 	}
 
@@ -174,7 +220,6 @@ void main()
 	vec3 hitPos = rayOrigin + t * rayDirection;
 	//combinedColor is the color the pixel will eventually be, each component can be added seperately and the ambient lighting will always be applied so it can happen now.
 	vec3 combinedColor = vec3(hitColor * ambiantLight);
-
 	//Calculate the lighting on the found intersection for each light in the scene:
 	for (int l = 0; l < lengths[3]; l += 6)
 	{
@@ -239,8 +284,10 @@ void main()
 			//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
 			combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity));
 		}
-	}
 
+	}
+	//adjust for mirrors
+	combinedColor *= mirrorColorMultiplier;
 	//output result of calculations to the screen
 	outputColor = vec4(combinedColor, 1.0f);
 }

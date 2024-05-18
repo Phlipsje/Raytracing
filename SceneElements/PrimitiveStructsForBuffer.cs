@@ -16,14 +16,15 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 Center;
         public float Radius;
         public Vector3 DiffuseColor;
-        public float Specularity;
+        public bool IsPureSpecular;
         public Vector3 SpecularColor;
-        private float padding = 0;
-        public SphereStruct(Vector3 center, float radius, Vector3 diffuseColor, Vector3 specularColor, float specularity)
+        public float Specularity;
+        public SphereStruct(Vector3 center, float radius, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity)
         {
             Center = center;
             Radius = radius;
             DiffuseColor = diffuseColor;
+            IsPureSpecular = isPureSpecular;
             SpecularColor = specularColor;
             Specularity = specularity;
         }
@@ -36,14 +37,15 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 Normal;
         float padding1 = 0;
         public Vector3 DiffuseColor;
-        float padding2 = 0;
+        public bool IsPureSpecular;
         public Vector3 SpecularColor;
         public float Specularity;
-        public PlaneStruct(Vector3 position, Vector3 normal, Vector3 diffuseColor, Vector3 specularColor, float specularity)
+        public PlaneStruct(Vector3 position, Vector3 normal, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity)
         {
             Position = position;
             Normal = normal;
             DiffuseColor = diffuseColor;
+            IsPureSpecular = isPureSpecular;
             SpecularColor = specularColor;
             Specularity = specularity;
         }
@@ -60,16 +62,17 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 Normal;
         float padding3 = 0;
         public Vector3 DiffuseColor;
-        float padding4 = 0;
+        public bool IsPureSpecular;
         public Vector3 SpecularColor;
         public float Specularity;
-        public TriangleStruct(Vector3 pointA, Vector3 pointB, Vector3 pointC, Vector3 normal, Vector3 diffuseColor, Vector3 specularColor, float specularity)
+        public TriangleStruct(Vector3 pointA, Vector3 pointB, Vector3 pointC, Vector3 normal, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity)
         {
             PointA = pointA;
             PointB = pointB;
             PointC = pointC;
             Normal = normal;
             DiffuseColor = diffuseColor;
+            IsPureSpecular = isPureSpecular;
             SpecularColor = specularColor;
             Specularity = specularity;
         }
