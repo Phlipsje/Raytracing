@@ -16,7 +16,68 @@ layout(binding = 0, std430) readonly buffer ssbo1
 const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = ambiantLight;
+const float PI = 3.1415926;
+const bool useTexture = true;
 
+
+//------------------------------TEXTURING------------------------------------
+
+float AreaTriangle(vec3 pointA, vec3 pointB, vec3 pointC) { return (length(cross(pointC - pointB, pointA - pointB)))/2;}
+
+vec2 TextureMappingSphere(vec3 intersectionPoint, vec3 sphereCenter, float r)
+{
+	vec3 adjustedIntersection = intersectionPoint - sphereCenter;
+	float theta = acos(adjustedIntersection.z/r);
+	float phi = atan(adjustedIntersection.y, adjustedIntersection.x);
+	return vec2((phi + PI)/(2*PI), theta/PI);
+}
+
+vec2 TextureMappingPlane (vec3 intersectionPoint, vec3 center, vec3 normal, vec3 uVEC, vec3 vVEC)
+{
+	vec3 ajdustedIntersect = intersectionPoint - center;
+	return vec2((dot(ajdustedIntersect, uVEC))/length(uVEC), (dot(ajdustedIntersect, vVEC))/ length(vVEC));
+}
+
+
+vec2 TextureMappingTriangle (vec3 intersectionPoint, vec3 pointA, vec3 pointB, vec3 pointC, vec2 UVa, vec2 UVb, vec2 UVc)
+{
+
+//Ik heb de shading normal er uit gehouden want ik begrijp het punt nog niet.
+
+	float abcArea = AreaTriangle(pointA, pointB, pointC);
+	float alpha = AreaTriangle(intersectionPoint, pointB, pointC)/abcArea;
+	float beta = AreaTriangle(intersectionPoint, pointC, pointA)/abcArea;
+	float gamma = 1 - beta - alpha;
+
+	float u = alpha*UVa.x + beta*UVb.x + gamma*UVc.x;
+	float v = alpha*UVa.y + beta*UVb.y + gamma*UVc.y;
+
+	return vec2(u,v);
+
+}
+
+
+vec3 Texturing1 (vec2 uv)
+{
+	
+    //varying pixel color
+    vec3 col = vec3(1,1,1);
+
+    // Output to screen
+    return vec3(col);
+}
+
+
+vec3 AplieTexture (vec2 uv, float index)
+{
+	if (index == 1){ return Texturing1(uv); }
+	return vec3(0,0,0);
+}
+//------------------------------TEXTURING------------------------------------
+
+
+
+//------------------------------INTERSECTION------------------------------------
 //first three values of vec4 form the normal vector, last value is the t value
 vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
 {
@@ -59,6 +120,10 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 }
 
 
+//------------------------------INTERSECTION------------------------------------
+
+
+
 void main()
 {
 	float x = gl_FragCoord.x;
@@ -77,7 +142,11 @@ void main()
 	vec3 hitSpecularColor = vec3(0, 0, 0);
 	float hitSpecularity = 1.0f;
 	vec3 hitNormal = vec3(0, 0, 0);
-	for (int i = 0; i < lengths[0]; i += 11)
+	float shapeType = 0;
+	float textureIndex = 0;
+	int shapeIndex = -1;
+
+	for (int i = 0; i < lengths[0]; i += 12)
 	{
 		vec4 result = IntersectSphere(rayOrigin, rayDirection, vec3(primitives[i], primitives[i+1], primitives[i+2]), primitives[i + 3]);
 		if (result.w > 0 && result.w < t)
@@ -87,11 +156,14 @@ void main()
 			hitSpecularColor = vec3(primitives[i + 7], primitives[i + 8], primitives[i + 9]);
 			hitSpecularity = primitives[i + 10];
 			hitNormal = result.xyz;
+			shapeType = 1;
+			shapeIndex = i;
+			textureIndex = primitives[i + 11];
 		}
 	}
 	int offset = lengths[0];
 	int end = offset + lengths[1];
-	for (int i = offset; i < end; i += 13)
+	for (int i = offset; i < end; i += 20)
 	{
 		vec3 planeNormal = vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]);
 		float result = IntersectPlane(rayOrigin, rayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), planeNormal);
@@ -102,14 +174,18 @@ void main()
 			hitSpecularColor = vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]);
 			hitSpecularity = primitives[i + 12];
 			hitNormal = planeNormal;
+			shapeType = 2;
+			shapeIndex = i;
+			textureIndex = primitives[i + 13];
 		}
 	}
 	offset += lengths[1];
 	end = offset + lengths[2];
-	for (int i = offset; i < end; i += 19)
+	for (int i = offset; i < end; i += 26)
 	{
 		vec3 triangleNormal = vec3(primitives[i + 9], primitives[i + 10], primitives[i + 11]);
-		float result = IntersectTriangle(rayOrigin, rayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
+		float result = IntersectTriangle(rayOrigin, rayDirection, 
+			vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
 			vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]), 
 			vec3(primitives[i + 6], primitives[i + 7], primitives[i + 8]), 
 			triangleNormal);
@@ -120,6 +196,9 @@ void main()
 			hitSpecularColor = vec3(primitives[i + 15], primitives[i + 16], primitives[i + 17]);
 			hitSpecularity = primitives[i + 18];
 			hitNormal = triangleNormal;
+			shapeType = 3;
+			shapeIndex = i;
+			textureIndex = primitives[shapeIndex + 19];
 		}
 	}
 	//if nothing got hit, return the color of the sky
@@ -128,9 +207,37 @@ void main()
 		outputColor = vec4(skyColor, 1.0f);
 		return;
 	}
+	
+	vec3 hitPos = rayOrigin + t * rayDirection;
+	
+	if (textureIndex != 0)
+	{
+		vec2 uv = vec2(0,0);
+		if (shapeType == 1)
+		{uv = TextureMappingSphere(hitPos, vec3(primitives[shapeIndex], primitives[shapeIndex+1], primitives[shapeIndex+2]), primitives[shapeIndex+3]);}
+
+		else if (shapeType == 2)
+		{uv = TextureMappingPlane(hitPos, 
+		vec3(primitives[shapeIndex], primitives[shapeIndex + 1], primitives[shapeIndex + 2]), 
+		vec3(primitives[shapeIndex + 3], primitives[shapeIndex + 4], primitives[shapeIndex + 5]),
+		vec3(primitives[shapeIndex + 14], primitives[shapeIndex + 15], primitives[shapeIndex + 16]),
+		vec3(primitives[shapeIndex + 17], primitives[shapeIndex + 18], primitives[shapeIndex + 19]));}
+
+		else if (shapeType == 3)
+		{uv = TextureMappingTriangle(hitPos, 
+			vec3(primitives[shapeIndex], primitives[shapeIndex + 1], primitives[shapeIndex + 2]),
+			vec3(primitives[shapeIndex + 3], primitives[shapeIndex + 4], primitives[shapeIndex + 5]), 
+			vec3(primitives[shapeIndex + 6], primitives[shapeIndex + 7], primitives[shapeIndex + 8]),
+			vec2(primitives[shapeIndex + 20], primitives[shapeIndex + 21]),
+			vec2(primitives[shapeIndex + 22], primitives[shapeIndex + 23]),
+			vec2(primitives[shapeIndex + 24], primitives[shapeIndex + 25]));}
+		
+
+		hitColor = AplieTexture(uv, textureIndex);
+	}
 
 	//calculate lighting of point on closest objec
-	vec3 hitPos = rayOrigin + t * rayDirection;
+	
 	vec3 combinedColor = vec3(hitColor * ambiantLight);
 	for (int l = 0; l < lengths[3]; l += 6)
 	{
@@ -193,12 +300,6 @@ void main()
 	//output result of calculations
 	outputColor = vec4(combinedColor, 1.0f);
 }
-vec3 Texturing1(vec2 uv)
-{
-	
-    //varying pixel color
-    vec3 col = uv.xyx;
 
-    // Output to screen
-    return vec3(col);
-}
+
+

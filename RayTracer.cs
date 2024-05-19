@@ -333,20 +333,20 @@ namespace OpenTK
                 else
                     trianglesAmount++;
             }
-            primitivesData = new float[spheresAmount * 11 + planesAmount * 13 + trianglesAmount * 19];
+            primitivesData = new float[spheresAmount * 12 + planesAmount * 20 + trianglesAmount * 26];
 
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
-            int planesOffset = spheresAmount * 11;
-            int trianglesOffset = planesOffset + planesAmount * 13;
+            int planesOffset = spheresAmount * 12;
+            int trianglesOffset = planesOffset + planesAmount * 20;
             for (int i = 0; i < primitives.Count; i++)
             {
                 IPrimitive primitive = primitives[i];
                 if (primitive is Sphere)
                 {
                     Sphere sphere = (Sphere)primitive;
-                    int offset = 11 * sphereCounter;
+                    int offset = 12 * sphereCounter;
                     primitivesData[0 + offset] = sphere.Center.X;
                     primitivesData[1 + offset] = sphere.Center.Y;
                     primitivesData[2 + offset] = sphere.Center.Z;
@@ -361,12 +361,14 @@ namespace OpenTK
                     primitivesData[9 + offset] = sphere.Material.SpecularColor.B;
                     //space for specularity exponent n
                     primitivesData[10 + offset] = sphere.Material.SpecularWidth;
+                    //space for texture ID
+                    primitivesData[11 + offset] = sphere.Material.TextureIndex;
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
                 {
                     Plane plane = (Plane)primitive;
-                    int offset = 13 * planesCounter + planesOffset;
+                    int offset = 20 * planesCounter + planesOffset;
                     primitivesData[0 + offset] = plane.Center.X;
                     primitivesData[1 + offset] = plane.Center.Y;
                     primitivesData[2 + offset] = plane.Center.Z;
@@ -383,12 +385,21 @@ namespace OpenTK
                     primitivesData[11 + offset] = plane.Material.SpecularColor.B;
                     //space for specularity exponent n
                     primitivesData[12 + offset] = plane.Material.SpecularWidth;
+                    //space for texture ID
+                    primitivesData[13 + offset] = plane.Material.TextureIndex;
+                    //uv coordinate space
+                    primitivesData[14 + offset] = plane.UVector.X;
+                    primitivesData[15 + offset] = plane.UVector.Y;
+                    primitivesData[16 + offset] = plane.UVector.Z;
+                    primitivesData[17 + offset] = plane.VVector.X;
+                    primitivesData[18 + offset] = plane.VVector.Y;
+                    primitivesData[19 + offset] = plane.VVector.Z;
                     planesCounter++;
                 }
                 else
                 {
                     Triangle triangle = (Triangle)primitive;
-                    int offset = 19 * trianglesCounter + trianglesOffset;
+                    int offset = 26 * trianglesCounter + trianglesOffset;
                     primitivesData[0 + offset] = triangle.PointA.X;
                     primitivesData[1 + offset] = triangle.PointA.Y;
                     primitivesData[2 + offset] = triangle.PointA.Z;
@@ -411,6 +422,15 @@ namespace OpenTK
                     primitivesData[17 + offset] = triangle.Material.SpecularColor.B;
                     //space for specularity exponent n
                     primitivesData[18 + offset] = triangle.Material.SpecularWidth;
+                    //space for texture ID
+                    primitivesData[19 + offset] = triangle.Material.TextureIndex;
+                    //uv coordinate space
+                    primitivesData[20 + offset] = triangle.UVPointA.X;
+                    primitivesData[21 + offset] = triangle.UVPointA.Y;
+                    primitivesData[22 + offset] = triangle.UVPointB.X;
+                    primitivesData[23 + offset] = triangle.UVPointB.Y;
+                    primitivesData[24 + offset] = triangle.UVPointC.X;
+                    primitivesData[25 + offset] = triangle.UVPointC.Y;
                     trianglesCounter++;
                 }
             }
@@ -429,7 +449,7 @@ namespace OpenTK
             }
                 int[] lengths = new int[]
             {
-                sphereCounter * 11, planesAmount * 13, trianglesAmount * 19, lightsData.Length
+                sphereCounter * 12, planesAmount * 20, trianglesAmount * 26, lightsData.Length
             };
             //send the primitives data to the shader
             GL.UseProgram(programID);

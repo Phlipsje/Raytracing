@@ -14,11 +14,15 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 Normal { get; set; }
         public Material Material { get; set; }
 
-        public Plane(Vector3 center, Vector3 normal, Material material)
+        public Vector3 UVector { get; set; }
+        public Vector3 VVector { get; set; }
+        public Plane(Vector3 center, Vector3 normal, Material material, Vector3 uVector, Vector3 vVector)
         {
             Center = center;
             Normal = normal.Normalized();
             Material = material;
+            UVector = uVector;
+            VVector = vVector;
         }
         public Tuple<float, Material> RayIntersect(Ray ray)
         {

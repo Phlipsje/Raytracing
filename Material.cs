@@ -22,7 +22,7 @@ namespace INFOGR2024Template
             get => specularWidth;
             set { specularWidth = MathF.Max(value, 1); }
         }
-        public Material(Color4 diffuseColor, Color4 specularColor, float specularWidth, int textureIndex)
+        public Material(Color4 diffuseColor, Color4 specularColor, float specularWidth, int textureIndex = 0)
         {
             DiffuseColor = diffuseColor;
             SpecularColor = specularColor;
@@ -36,7 +36,7 @@ namespace INFOGR2024Template
             SpecularWidth = 1;
             TextureIndex = 0;
         }
-        public Material(Color4 diffuseColor, bool isMetal, float specularity, float specularWidth, int textureIndex)
+        public Material(Color4 diffuseColor, bool isMetal, float specularity, float specularWidth, int textureIndex = 0)
         {
             DiffuseColor = diffuseColor;
             if (isMetal)
