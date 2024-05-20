@@ -68,7 +68,7 @@ namespace INFOGR2024Template.SceneElements
             return new Tuple<float, Material>(t, Material);
         }
         
-        public Vector3[] BoundingBox
+        public BoundingBox BoundingBox
         {
             get
             {
@@ -82,7 +82,7 @@ namespace INFOGR2024Template.SceneElements
                 
                 vectors[0] = new Vector3(minX, minY, minZ);
                 vectors[1] = new Vector3(maxX, maxY, maxZ);
-                return vectors;
+                return new BoundingBox(vectors[0], vectors[1]);
             }
         }
     }

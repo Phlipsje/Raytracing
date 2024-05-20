@@ -1,5 +1,6 @@
 ﻿using OpenTK.SceneElements;
 using INFOGR2024Template.Helper_classes;
+using INFOGR2024Template.SceneElements;
 using OpenTK.Mathematics;
 
 namespace INFOGR2024Template.Scenes
@@ -23,7 +24,9 @@ namespace INFOGR2024Template.Scenes
             
             for (int i = 0; i < Primitives.Count; i++)
             {
-                AccelerationStructure.AddPrimitive(i);
+                //Planes aren't added to the data structure, because they are infinitely large
+                if(Primitives[i].GetType() != typeof(Plane))
+                    AccelerationStructure.AddPrimitive(i);
             }
 
             AccelerationStructureData = AccelerationStructure.TurnIntoFloatArray();

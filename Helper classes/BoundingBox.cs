@@ -5,37 +5,37 @@ namespace INFOGR2024Template.Helper_classes;
 //A cube with the smallest possible size where everything can be stored in it
 public struct BoundingBox
 {
-    public Vector3 minimumValues;
-    public Vector3 maximumValues;
+    public Vector3 MinimumValues;
+    public Vector3 MaximumValues;
 
     public BoundingBox(Vector3 minimumValues, Vector3 maximumValues)
     {
-        this.minimumValues = minimumValues;
-        this.maximumValues = maximumValues;
+        this.MinimumValues = minimumValues;
+        this.MaximumValues = maximumValues;
     }
 
     public float GetSize()
     {
-        float x = maximumValues.X - minimumValues.X;
-        float y = maximumValues.Y - minimumValues.Y;
-        float z = maximumValues.Z - minimumValues.Z;
+        float x = MaximumValues.X - MinimumValues.X;
+        float y = MaximumValues.Y - MinimumValues.Y;
+        float z = MaximumValues.Z - MinimumValues.Z;
         return  x * y * z;
     }
     
     public bool FullyContains(BoundingBox checkBoundingBox)
     {
         //Check for all false cases
-        if (checkBoundingBox.minimumValues.X < minimumValues.X)
+        if (checkBoundingBox.MinimumValues.X < MinimumValues.X)
             return false;
-        if (checkBoundingBox.minimumValues.Y < minimumValues.Y)
+        if (checkBoundingBox.MinimumValues.Y < MinimumValues.Y)
             return false;
-        if (checkBoundingBox.minimumValues.Z < minimumValues.Z)
+        if (checkBoundingBox.MinimumValues.Z < MinimumValues.Z)
             return false;
-        if (checkBoundingBox.maximumValues.X > maximumValues.X)
+        if (checkBoundingBox.MaximumValues.X > MaximumValues.X)
             return false;
-        if (checkBoundingBox.maximumValues.Y > maximumValues.Y)
+        if (checkBoundingBox.MaximumValues.Y > MaximumValues.Y)
             return false;
-        if (checkBoundingBox.maximumValues.Z > maximumValues.Z)
+        if (checkBoundingBox.MaximumValues.Z > MaximumValues.Z)
             return false;
 
         //Otherwise it is contained within the bounding box
@@ -44,24 +44,24 @@ public struct BoundingBox
 
     public float CalculatePotentialBoundingBoxSize(BoundingBox includedBoundingBox)
     {
-        includedBoundingBox.minimumValues.X = MathF.Min(includedBoundingBox.minimumValues.X, minimumValues.X);
-        includedBoundingBox.minimumValues.Y = MathF.Min(includedBoundingBox.minimumValues.Y, minimumValues.Y);
-        includedBoundingBox.minimumValues.Z = MathF.Min(includedBoundingBox.minimumValues.Z, minimumValues.Z);
-        includedBoundingBox.maximumValues.X = MathF.Max(includedBoundingBox.maximumValues.X, maximumValues.X);
-        includedBoundingBox.maximumValues.Y = MathF.Max(includedBoundingBox.maximumValues.Y, maximumValues.Y);
-        includedBoundingBox.maximumValues.Z = MathF.Max(includedBoundingBox.maximumValues.Z, maximumValues.Z);
+        includedBoundingBox.MinimumValues.X = MathF.Min(includedBoundingBox.MinimumValues.X, MinimumValues.X);
+        includedBoundingBox.MinimumValues.Y = MathF.Min(includedBoundingBox.MinimumValues.Y, MinimumValues.Y);
+        includedBoundingBox.MinimumValues.Z = MathF.Min(includedBoundingBox.MinimumValues.Z, MinimumValues.Z);
+        includedBoundingBox.MaximumValues.X = MathF.Max(includedBoundingBox.MaximumValues.X, MaximumValues.X);
+        includedBoundingBox.MaximumValues.Y = MathF.Max(includedBoundingBox.MaximumValues.Y, MaximumValues.Y);
+        includedBoundingBox.MaximumValues.Z = MathF.Max(includedBoundingBox.MaximumValues.Z, MaximumValues.Z);
 
         return includedBoundingBox.GetSize();
     }
     
     public BoundingBox CalculatePotentialBoundingBox(BoundingBox includedBoundingBox)
     {
-        includedBoundingBox.minimumValues.X = MathF.Min(includedBoundingBox.minimumValues.X, minimumValues.X);
-        includedBoundingBox.minimumValues.Y = MathF.Min(includedBoundingBox.minimumValues.Y, minimumValues.Y);
-        includedBoundingBox.minimumValues.Z = MathF.Min(includedBoundingBox.minimumValues.Z, minimumValues.Z);
-        includedBoundingBox.maximumValues.X = MathF.Max(includedBoundingBox.maximumValues.X, maximumValues.X);
-        includedBoundingBox.maximumValues.Y = MathF.Max(includedBoundingBox.maximumValues.Y, maximumValues.Y);
-        includedBoundingBox.maximumValues.Z = MathF.Max(includedBoundingBox.maximumValues.Z, maximumValues.Z);
+        includedBoundingBox.MinimumValues.X = MathF.Min(includedBoundingBox.MinimumValues.X, MinimumValues.X);
+        includedBoundingBox.MinimumValues.Y = MathF.Min(includedBoundingBox.MinimumValues.Y, MinimumValues.Y);
+        includedBoundingBox.MinimumValues.Z = MathF.Min(includedBoundingBox.MinimumValues.Z, MinimumValues.Z);
+        includedBoundingBox.MaximumValues.X = MathF.Max(includedBoundingBox.MaximumValues.X, MaximumValues.X);
+        includedBoundingBox.MaximumValues.Y = MathF.Max(includedBoundingBox.MaximumValues.Y, MaximumValues.Y);
+        includedBoundingBox.MaximumValues.Z = MathF.Max(includedBoundingBox.MaximumValues.Z, MaximumValues.Z);
 
         return includedBoundingBox;
     }
@@ -69,17 +69,17 @@ public struct BoundingBox
     public bool Overlap(BoundingBox boundingBox)
     {
         //Get all cases in which the boxes don't overlap
-        if (boundingBox.minimumValues.X > maximumValues.X)
+        if (boundingBox.MinimumValues.X > MaximumValues.X)
             return false;
-        if (boundingBox.minimumValues.Y > maximumValues.Y)
+        if (boundingBox.MinimumValues.Y > MaximumValues.Y)
             return false;
-        if (boundingBox.minimumValues.Z > maximumValues.Z)
+        if (boundingBox.MinimumValues.Z > MaximumValues.Z)
             return false;
-        if (boundingBox.maximumValues.X < minimumValues.X)
+        if (boundingBox.MaximumValues.X < MinimumValues.X)
             return false;
-        if (boundingBox.maximumValues.Y < minimumValues.Y)
+        if (boundingBox.MaximumValues.Y < MinimumValues.Y)
             return false;
-        if (boundingBox.maximumValues.Z < minimumValues.Z)
+        if (boundingBox.MaximumValues.Z < MinimumValues.Z)
             return false;
         
         //Else return true

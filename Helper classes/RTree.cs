@@ -13,8 +13,9 @@ public class RTree
     private IScene scene { get; } //Used to get a reference to the list of primitives, otherwise we need an entire copy of the data structure
     private TreeNode rootNode { get; }
     private List<IPrimitive> primitives => scene.Primitives;
-    private int maximumChildNodes { get; } //Maximum amount of child nodes stored inside of 1 node
-    private int maximumValuesPerNode { get; } //Maximum amount of values that can be stored in 1 node before it overflows
+    private int maximumChildNodes { get; } = 2; //Maximum amount of child nodes stored inside of 1 node
+
+    private int maximumValuesPerNode { get; } = 4; //Maximum amount of values that can be stored in 1 node before it overflows
     //This holds the method to turn the treeNodes into a single array to pass as a buffer to OpenGL
 
     public RTree(IScene scene)
@@ -40,15 +41,18 @@ public class RTree
     //Private as only a helper class for RTree and should not be accessed in any other way
     private class TreeNode
     {
+        public bool isEmpty;
         public bool isLeaf;
         public TreeNode[] children; //Other nodes lower than this node
         private int maximumChildNodes { get; }
         public int[] primitivePointers; //If there are no other lower nodes, then store the resulting primitives
         public BoundingBox boundingBox;
         private List<IPrimitive> primitives { get; }
+        private TreeNode parent;
 
         public TreeNode(int maximumChildNodes, int maximumValuesPerNode, List<IPrimitive> primitives)
         {
+            isEmpty = true;
             isLeaf = true;
             this.maximumChildNodes = maximumChildNodes;
             primitivePointers = new int[maximumValuesPerNode];
@@ -65,11 +69,11 @@ public class RTree
         /// <summary>
         /// Creates a list of floats that describe the data structure
         /// The list looks like this:
-        /// 0-5 = boundingBoxValues
+        /// 0-5 = boundingBoxValues (X, then Y, then Z. Min values, then max values)
         /// 6 = bool 0 or 1, 1 if it is a leaf and 0 if a branch
         /// In case it is a leaf
         /// -> 7 = amount of pointers to primitives
-        /// -> 8-n = the pointer values
+        /// -> 8-n = the pointer values (These are the values in the primitive list)
         /// Else in case it is a branch
         /// -> 7 = amount of child nodes
         /// -> 8-n = the indices where the other nodes start (so pointers)
@@ -78,13 +82,17 @@ public class RTree
         /// <returns></returns>
         public List<float> TurnIntoFloatArray(List<float> floatList)
         {
+            //Don't waste data on empty lists
+            if (isEmpty)
+                return floatList;
+            
             //Add boundingBox
-            floatList.Add(boundingBox.minimumValues.X);
-            floatList.Add(boundingBox.minimumValues.Y);
-            floatList.Add(boundingBox.minimumValues.Z);
-            floatList.Add(boundingBox.maximumValues.X);
-            floatList.Add(boundingBox.maximumValues.Y);
-            floatList.Add(boundingBox.maximumValues.Z);
+            floatList.Add(boundingBox.MinimumValues.X);
+            floatList.Add(boundingBox.MinimumValues.Y);
+            floatList.Add(boundingBox.MinimumValues.Z);
+            floatList.Add(boundingBox.MaximumValues.X);
+            floatList.Add(boundingBox.MaximumValues.Y);
+            floatList.Add(boundingBox.MaximumValues.Z);
         
             //Add bool of branch or leaf
             floatList.Add(isLeaf ? 1 : 0);
@@ -126,12 +134,13 @@ public class RTree
                 //Actually add the pointers to the float array
                 for (int i = 0; i < count; ) //Note doesn't increment!
                 {
-                    floatList[currentIndex + 1 + i] = floatList.Count - (currentIndex + 1 + i); //The pointer is how many spaces forward
+                    floatList[currentIndex + 1 + i] = floatList.Count;
                     
                     //Run entire algorithm for that node
                     if (children[i].boundingBox.GetSize() >= 0)
                     {
-                        floatList.AddRange(children[i].TurnIntoFloatArray(floatList));
+                        //Add the float list of it's children to this, the child starts off with an empty array
+                        floatList.AddRange(children[i].TurnIntoFloatArray(new List<float>()));
                         i++;
                     }
                 }
@@ -142,6 +151,8 @@ public class RTree
         
         public void AddElement(int primitivePointer)
         {
+            isEmpty = false;
+            
             if (isLeaf)
             {
                 //Find the first empty slot
@@ -263,6 +274,7 @@ public class RTree
             for (int i = 0; i < children.Length; i++)
             {
                 children[i] = new TreeNode(maximumChildNodes, primitivePointers.Length, primitives);
+                children[i].parent = this;
             }
             
             //Place 2 furthest nodes together
@@ -282,12 +294,12 @@ public class RTree
                     IPrimitive primitive0 = primitives[primitivePointers[i]];
                     IPrimitive primitive1 = primitives[primitivePointers[j]];
                     
-                    float smallX = MathF.Min(primitive0.BoundingBox.minimumValues.X, primitive1.BoundingBox.minimumValues.X);
-                    float smallY = MathF.Min(primitive0.BoundingBox.minimumValues.Y, primitive1.BoundingBox.minimumValues.Y);
-                    float smallZ = MathF.Min(primitive0.BoundingBox.minimumValues.Z, primitive1.BoundingBox.minimumValues.Z);
-                    float bigX = MathF.Max(primitive0.BoundingBox.maximumValues.X, primitive1.BoundingBox.maximumValues.X);
-                    float bigY = MathF.Max(primitive0.BoundingBox.maximumValues.Y, primitive1.BoundingBox.maximumValues.Y);
-                    float bigZ = MathF.Max(primitive0.BoundingBox.maximumValues.Z, primitive1.BoundingBox.maximumValues.Z);
+                    float smallX = MathF.Min(primitive0.BoundingBox.MinimumValues.X, primitive1.BoundingBox.MinimumValues.X);
+                    float smallY = MathF.Min(primitive0.BoundingBox.MinimumValues.Y, primitive1.BoundingBox.MinimumValues.Y);
+                    float smallZ = MathF.Min(primitive0.BoundingBox.MinimumValues.Z, primitive1.BoundingBox.MinimumValues.Z);
+                    float bigX = MathF.Max(primitive0.BoundingBox.MaximumValues.X, primitive1.BoundingBox.MaximumValues.X);
+                    float bigY = MathF.Max(primitive0.BoundingBox.MaximumValues.Y, primitive1.BoundingBox.MaximumValues.Y);
+                    float bigZ = MathF.Max(primitive0.BoundingBox.MaximumValues.Z, primitive1.BoundingBox.MaximumValues.Z);
 
                     float newDistance = (bigX - smallX) * (bigY - smallY) * (bigZ - smallZ);
 
@@ -301,8 +313,8 @@ public class RTree
             }
             
             //Assign the 2 furthest apart nodes as far away as possible
-            children[0].primitivePointers[0] = primitivePointers[index0];
-            children[1].primitivePointers[0] = primitivePointers[index1];
+            children[0].AddElement(primitivePointers[index0]);
+            children[1].AddElement(primitivePointers[index1]);
             
             //Just reinsert every node (except the 2 that were just added)
             for (int i = 0; i < primitivePointers.Length; i++)
@@ -335,12 +347,12 @@ public class RTree
                     if (primitivePointer == -1)
                         continue;
                     
-                    smallX = MathF.Min(smallX, primitives[primitivePointer].BoundingBox.minimumValues.X);
-                    smallY = MathF.Min(smallY, primitives[primitivePointer].BoundingBox.minimumValues.Y);
-                    smallZ = MathF.Min(smallZ, primitives[primitivePointer].BoundingBox.minimumValues.Z);
-                    bigX = MathF.Max(bigX, primitives[primitivePointer].BoundingBox.maximumValues.X);
-                    bigY = MathF.Max(bigY, primitives[primitivePointer].BoundingBox.maximumValues.Y);
-                    bigZ = MathF.Max(bigZ, primitives[primitivePointer].BoundingBox.maximumValues.Z);
+                    smallX = MathF.Min(smallX, primitives[primitivePointer].BoundingBox.MinimumValues.X);
+                    smallY = MathF.Min(smallY, primitives[primitivePointer].BoundingBox.MinimumValues.Y);
+                    smallZ = MathF.Min(smallZ, primitives[primitivePointer].BoundingBox.MinimumValues.Z);
+                    bigX = MathF.Max(bigX, primitives[primitivePointer].BoundingBox.MaximumValues.X);
+                    bigY = MathF.Max(bigY, primitives[primitivePointer].BoundingBox.MaximumValues.Y);
+                    bigZ = MathF.Max(bigZ, primitives[primitivePointer].BoundingBox.MaximumValues.Z);
                 }
             }
             else //In the case it is a branch
@@ -348,18 +360,21 @@ public class RTree
                 foreach (TreeNode treeNode in children)
                 {
                     //Overwrite any values than are less extreme than the new values in the child node
-                    smallX = MathF.Min(smallX, treeNode.boundingBox.minimumValues.X);
-                    smallY = MathF.Min(smallY, treeNode.boundingBox.minimumValues.Y);
-                    smallZ = MathF.Min(smallZ, treeNode.boundingBox.minimumValues.Z);
-                    bigX = MathF.Max(bigX, treeNode.boundingBox.maximumValues.X);
-                    bigY = MathF.Max(bigY, treeNode.boundingBox.maximumValues.Y);
-                    bigZ = MathF.Max(bigZ, treeNode.boundingBox.maximumValues.Z);
+                    smallX = MathF.Min(smallX, treeNode.boundingBox.MinimumValues.X);
+                    smallY = MathF.Min(smallY, treeNode.boundingBox.MinimumValues.Y);
+                    smallZ = MathF.Min(smallZ, treeNode.boundingBox.MinimumValues.Z);
+                    bigX = MathF.Max(bigX, treeNode.boundingBox.MaximumValues.X);
+                    bigY = MathF.Max(bigY, treeNode.boundingBox.MaximumValues.Y);
+                    bigZ = MathF.Max(bigZ, treeNode.boundingBox.MaximumValues.Z);
                 }
             }
             
             //Update the bounding box
-            boundingBox.minimumValues = new Vector3(smallX, smallY, smallZ);
-            boundingBox.maximumValues = new Vector3(bigX, bigY, bigZ);
+            boundingBox.MinimumValues = new Vector3(smallX, smallY, smallZ);
+            boundingBox.MaximumValues = new Vector3(bigX, bigY, bigZ);
+            
+            //Update bounding box above this in tree hierarchy
+            parent?.UpdateBoundingBox();
         }
     }
 }

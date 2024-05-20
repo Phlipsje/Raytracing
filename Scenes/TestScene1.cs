@@ -11,7 +11,7 @@ namespace INFOGR2024Template.Scenes
         public Camera Camera {  get; set; }
         public List<Vector3> PointLights { get; set; }
 
-        public TestScene1() 
+        public TestScene1()
         {
             Vector3 offset = new Vector3(10, 0, 0);
             Camera = new Camera(new Vector3(1, 5f, -5), new Vector3(0f, -1f, 1f), new Vector3(1, 0f, 0), 1f, 1.6f, 0.9f);

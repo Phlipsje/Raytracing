@@ -8,6 +8,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using System;
+using System.Drawing;
 using INFOGR2024Template.SceneElements;
 
 namespace OpenTK
@@ -189,10 +190,10 @@ namespace OpenTK
                 }
 
                 //Check if primitive would be offscreen
-                if (primitive.BoundingBox[0].X > topRightPlane.X) continue;
-                if (primitive.BoundingBox[0].Z > topRightPlane.Y) continue;
-                if (primitive.BoundingBox[1].X < bottomLeftPlane.X) continue;
-                if (primitive.BoundingBox[1].Z < bottomLeftPlane.Y) continue;
+                if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.X < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Z < bottomLeftPlane.Y) continue;
                 
                 //If even slightly onscreen, just draw the entire primitive
                 primitivesToDraw.Add(primitive);
@@ -347,6 +348,23 @@ namespace OpenTK
             
             //Draw camera (this is done after the lines, because then it is drawn over it, which looks nicer)
             ScreenHelper.DrawCircle(pixelPositionCamera.X, pixelPositionCamera.Y, 10, Color4.Yellow);
+            
+            //Draw the bounding boxes of acceleration structure
+            int count = 0;
+            while (true)
+            {
+                //If at the end, stop
+                if (count + 7 > scene.AccelerationStructureData.Length - 1)
+                    break;
+                
+                //Draw the bounding box
+                DrawRectangle(scene.AccelerationStructureData[count], scene.AccelerationStructureData[count+2], 
+                    scene.AccelerationStructureData[count+3], scene.AccelerationStructureData[count+5],Color4.White);
+                
+                //Update the count to start at the next bounding box
+                count += (int)scene.AccelerationStructureData[count + 7] + 7;
+            }
+            
 
             //Draw view info text (Drawn last to be drawn on top of everything else)
             int white = ColorHelper.ColorToInt(Color4.White);
@@ -386,6 +404,15 @@ namespace OpenTK
                 y /= height;
                 return new Vector2i((int)(x * ScreenHelper.GetPixelWidth()), (int)(y * ScreenHelper.GetPixelHeight()));
             }
+
+            //World position to line on screen
+            void DrawRectangle(float x0, float y0, float x1, float y1, Color4 color)
+            {
+                ScreenHelper.DrawLine(ScaleToPixel(x0, y0), ScaleToPixel(x1, y0), color);
+                ScreenHelper.DrawLine(ScaleToPixel(x1, y0), ScaleToPixel(x1, y1), color);
+                ScreenHelper.DrawLine(ScaleToPixel(x1, y1), ScaleToPixel(x0, y1), color);
+                ScreenHelper.DrawLine(ScaleToPixel(x0, y1), ScaleToPixel(x0, y0), color);
+            }
         }
         
         private void RenderDebugSideXAxis(float viewingRadius, int linesPerCircle, int exampleRayCount)
@@ -404,10 +431,10 @@ namespace OpenTK
                 }
 
                 //Check if primitive would be offscreen
-                if (primitive.BoundingBox[0].Z > topRightPlane.X) continue;
-                if (primitive.BoundingBox[0].Y > topRightPlane.Y) continue;
-                if (primitive.BoundingBox[1].Z < bottomLeftPlane.X) continue;
-                if (primitive.BoundingBox[1].Y < bottomLeftPlane.Y) continue;
+                if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.Z < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Y < bottomLeftPlane.Y) continue;
                 
                 //If even slightly onscreen, just draw the entire primitive
                 primitivesToDraw.Add(primitive);
@@ -619,10 +646,10 @@ namespace OpenTK
                 }
 
                 //Check if primitive would be offscreen
-                if (primitive.BoundingBox[0].X > topRightPlane.X) continue;
-                if (primitive.BoundingBox[0].Y > topRightPlane.Y) continue;
-                if (primitive.BoundingBox[1].X < bottomLeftPlane.X) continue;
-                if (primitive.BoundingBox[1].Y < bottomLeftPlane.Y) continue;
+                if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.X < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Y < bottomLeftPlane.Y) continue;
                 
                 //If even slightly onscreen, just draw the entire primitive
                 primitivesToDraw.Add(primitive);
