@@ -67,7 +67,23 @@ namespace INFOGR2024Template.SceneElements
                 return new Tuple<float, Material>(float.MinValue, Material);
             return new Tuple<float, Material>(t, Material);
         }
-
-        public BoundingBox BoundingBox { get; set; }
+        
+        public Vector3[] BoundingBox
+        {
+            get
+            {
+                Vector3[] vectors = new Vector3[2];
+                float minX = MathF.Min(PointA.X, MathF.Min(PointB.X, PointC.X));
+                float minY = MathF.Min(PointA.Y, MathF.Min(PointB.Y, PointC.Y));
+                float minZ = MathF.Min(PointA.Z, MathF.Min(PointB.Z, PointC.Z));
+                float maxX = MathF.Max(PointA.X, MathF.Max(PointB.X, PointC.X));
+                float maxY = MathF.Max(PointA.Y, MathF.Max(PointB.Y, PointC.Y));
+                float maxZ = MathF.Max(PointA.Z, MathF.Max(PointB.Z, PointC.Z));
+                
+                vectors[0] = new Vector3(minX, minY, minZ);
+                vectors[1] = new Vector3(maxX, maxY, maxZ);
+                return vectors;
+            }
+        }
     }
 }
