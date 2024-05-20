@@ -358,11 +358,14 @@ namespace OpenTK
                     break;
                 
                 //Draw the bounding box
+                //+2, +3, and +5 to get all X and Z values from the float array
                 DrawRectangle(scene.AccelerationStructureData[count], scene.AccelerationStructureData[count+2], 
                     scene.AccelerationStructureData[count+3], scene.AccelerationStructureData[count+5],Color4.White);
                 
                 //Update the count to start at the next bounding box
-                count += (int)scene.AccelerationStructureData[count + 7] + 7;
+                //[count + 7] is the location where the length of the rest of the data here is stored
+                //+8 because of the positioning in this bounding box of the float array
+                count += (int)scene.AccelerationStructureData[count + 7] + 8;
             }
             
 
