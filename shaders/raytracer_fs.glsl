@@ -96,6 +96,41 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 		return -1;
 	return t;
 }
+bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
+{
+	//Check all spheres in the scene for an intersection
+	for (int i = 0; i < spheres.length(); i++)
+	{
+		Sphere sphere = spheres[i];
+		//we only care about the w component (the distance) of the result.
+		float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
+		if (result > epsilon && result < distanceToLight)
+		{
+			return true;
+		}
+	}
+	//Check all planes in the scene for an intersection
+	for (int i = 0; i < planes.length(); i++)
+	{
+		Plane plane = planes[i];
+		float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, plane.position, plane.normal);
+		if (result > epsilon && result < distanceToLight)
+		{
+			return true;
+		}
+	}
+	//Check all triangles in the scene for an intersection
+	for (int i = 0; i < triangles.length(); i++)
+	{
+		Triangle triangle = triangles[i];
+		float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
+		if (result > epsilon && result < distanceToLight)
+		{
+			return true;
+		}
+	}	
+	return false;
+}
 void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal)
 {
 	//intersect with all spheres:
@@ -147,6 +182,7 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 		}
 	}
 }
+
 //This code will be run for each pixel on the screen
 void main()
 {
@@ -158,7 +194,7 @@ void main()
 	vec3 bottomRight = vec3(camera[6], camera[7], camera[8]);
 	vec3 topLeft = vec3(camera[9], camera[10], camera[11]);
 
-	//FOLLOWING SECTION: setup
+	//FOLLOWING SECTION: First viewray to determine closest object
 	//determine viewray from cameraData
 	vec3 rayOrigin = vec3(camera[0], camera[1], camera[2]);
 	vec3 rayDirection = normalize( (bottomLeft + (x/width) * (bottomRight - bottomLeft) + (y/height) * (topLeft - bottomLeft)) - rayOrigin );
@@ -179,19 +215,42 @@ void main()
 	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL
 	//value that the final color will be multiplied with, instantiated to be just 1, 1, 1 so it has no effect if no mirrors are used.
 	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
+	vec3 finalColor = vec3(0, 0, 0);
 	int bounces = 0;
 	//Go into "recursion" to calculate mirror reflection
 	while (hitPureSpecular && bounces < maxBounces)
 	{
-		//setup
+		//determine location/position of the intersection
+		vec3 hitPos = rayOrigin + t * rayDirection;
+
+		//calculate diffuse component of lighting on previous found intersection, check for black diffuse first as this calculation is expensive and a lot of mirrors have black diffuse
+		if (hitColor != vec3(0, 0, 0))
+		{
+			vec3 combinedColor = vec3(hitColor * ambiantLight);
+			for (int l = 0; l < lengths[3]; l += 6)
+			{
+				vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
+				float distanceToLight = length(lightPos - hitPos);
+				vec3 shadowRayOrigin = hitPos;
+				vec3 shadowRayDirection = normalize(lightPos - hitPos);
+				//if no objects were in the way of the light, add the appropriate lighting to it.
+				if (!ObjectInWayOfLight(distanceToLight, shadowRayOrigin, shadowRayDirection))
+				{
+					vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
+					//formula for diffuse component, the specular component will be the pure specular component, which is calculated in a different way, as we are sure the current object is pureSpecular
+					combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection));
+				}
+			}
+			finalColor += combinedColor * mirrorColorMultiplier;
+		}
+
+		//setup for next ray 
 		mirrorColorMultiplier *= hitSpecularColor;
 		//make sure normal is right way around
 		if (dot(hitNormal, rayDirection) > 0.0f)
 			hitNormal = -hitNormal;
 		//calculate direction of new ray
 		vec3 reflectionDirection = normalize(rayDirection - 2 * dot(rayDirection, hitNormal) * hitNormal);
-		//determine location/position of the intersection
-		vec3 hitPos = rayOrigin + t * rayDirection;
 
 		//create the new ray and reset ray variables
 		rayOrigin = hitPos;
@@ -211,8 +270,14 @@ void main()
 	//if nothing got hit, return the color of the sky, t only changes if any of the primitives got hit by the viewray and t was instantiated to be float.maxValue
 	if (t == 3.402823466e+38)
 	{
-		outputColor = vec4(skyColor * mirrorColorMultiplier, 1.0f);
+		outputColor = vec4(finalColor + skyColor * mirrorColorMultiplier, 1.0f);
 		return;
+	}
+	//if max mounces reached let the final added component of the color be the color black
+	if (hitPureSpecular)
+	{
+		//Peter said just return black but if the mirrors also had a diffuse component i think we should still output that, if no mirrors had a diffuse component finalColor will be black.
+		outputColor = vec4(finalColor, 1.0f);
 	}
 
 	//FOLLOWING SECTION: calculate lighting of point on closest object
@@ -227,54 +292,9 @@ void main()
 		float distanceToLight = length(lightPos - hitPos);
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
-		float shadowRayT = -1;
-		//Check all spheres in the scene for an intersection
-		for (int i = 0; i < spheres.length(); i++)
-		{
-			Sphere sphere = spheres[i];
-			//we only care about the w component (the distance) of the result.
-			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
-			if (result > epsilon && result < distanceToLight)
-			{
-				shadowRayT = result;
-				//if an intersection was found we can stop early, as we only care about whether there is an object between the lights and not which is the closest.
-				break;
-			}
-		}
-		//Only continue if a intersection hasn't already been found yet
-		if (shadowRayT < 0)
-		{
-			//Check all planes in the scene for an intersection
-			for (int i = 0; i < planes.length(); i++)
-			{
-				Plane plane = planes[i];
-				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, plane.position, plane.normal);
-				if (result > epsilon && result < distanceToLight)
-				{
-					shadowRayT = result;
-					//if an intersection was found we can stop early, as we only care about whether there is an object between the lights and not which is the closest.
-					break;
-				}
-			}
-			//Only continue if a intersection hasn't already been found yet
-			if (shadowRayT < 0)
-			{
-				//Check all triangles in the scene for an intersection
-				for (int i = 0; i < triangles.length(); i++)
-				{
-					Triangle triangle = triangles[i];
-					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
-					if (result > epsilon && result < distanceToLight)
-					{
-						shadowRayT = result;
-						//if an intersection was found we can stop early, as we only care about whether there is an object between the lights and not which is the closest.
-						break;
-					}
-				}
-			}
-		}
+		
 		//if no objects were in the way of the light, add the appropriate lighting to it.
-		if (shadowRayT < 0)
+		if (!ObjectInWayOfLight(distanceToLight, shadowRayOrigin, shadowRayDirection))
 		{
 			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
 			//make sure normal is right way around
@@ -284,10 +304,9 @@ void main()
 			//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
 			combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity));
 		}
-
 	}
 	//adjust for mirrors
-	combinedColor *= mirrorColorMultiplier;
+	finalColor += combinedColor * mirrorColorMultiplier;
 	//output result of calculations to the screen
-	outputColor = vec4(combinedColor, 1.0f);
+	outputColor = vec4(finalColor, 1.0f);
 }

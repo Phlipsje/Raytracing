@@ -455,6 +455,10 @@ namespace OpenTK
                 camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + delta * zoomSpeed);
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.X))
                 camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter - delta * zoomSpeed);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.F))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + 100 * delta * zoomSpeed);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.G))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter - 100 * delta * zoomSpeed);
 
             //rotating with arrow keys
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Right))
