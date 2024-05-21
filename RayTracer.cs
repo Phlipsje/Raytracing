@@ -10,17 +10,23 @@ using OpenTK.Graphics.OpenGL;
 using System;
 using System.Drawing;
 using INFOGR2024Template.SceneElements;
+using System.Runtime.InteropServices;
 
 namespace OpenTK
 {
     class RayTracer
     {
+        public CameraMode CameraMode = CameraMode.OpenGL;
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_planes, uniform_spheres, uniform_triangles, uniform_camera, uniform_lights, uniform_lengths;
-        float[] planesData, spheresData, trianglesData, cameraData, lightsData;
-        public CameraMode CameraMode = CameraMode.OpenGL;
+        int uniform_camera, uniform_ligths, uniform_lengths;
+        int ssbo_spheres, ssbo_planes, ssbo_triangles;
+        float[] cameraData, lightsData;
+        SphereStruct[] spheresData;
+        PlaneStruct[] planesData;
+        TriangleStruct[] trianglesData;
+        public bool MouseEnabled = false;
         private Camera camera => scene.Camera;
         private IScene scene;
         private ViewAxis viewAxis = ViewAxis.Topdown;
@@ -43,10 +49,10 @@ namespace OpenTK
             LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
             LoadShader("../../../shaders/raytracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
             GL.LinkProgram(programID);
-            /*Debug.WriteLine(GL.GetProgramInfoLog(programID));
+            Debug.WriteLine(GL.GetProgramInfoLog(programID));
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
             Debug.WriteLine(GL.GetShaderInfoLog(vertexShaderID));
-            Debug.WriteLine(GL.GetError());*/
+            Debug.WriteLine(GL.GetError());
 
             // the program contains the compiled shaders, we can delete the source
             GL.DetachShader(programID, vertexShaderID);
@@ -67,17 +73,13 @@ namespace OpenTK
 
             //gain access to input variables
             attribute_vPosition = GL.GetAttribLocation(programID, "vPosition");
-            uniform_planes = GL.GetUniformLocation(programID, "planes");
-            uniform_spheres = GL.GetUniformLocation(programID, "spheres");
-            uniform_triangles = GL.GetUniformLocation(programID, "triangles");
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
-            uniform_lights = GL.GetUniformLocation(programID, "lights");
+            uniform_ligths = GL.GetUniformLocation(programID, "lights");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
-            Debug.WriteLine("planesLoc: " + uniform_planes + ". spheresLoc: " + uniform_spheres + ". trianglesLoc: " + uniform_triangles + ". ligthsLoc: " + uniform_lights);
-            Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));
-            SendPrimitivesToShader();
+            Debug.WriteLine("ligthsLoc: " + uniform_ligths);
+            Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));       
 
             //bind buffer for positions
             GL.UseProgram(programID);
@@ -91,6 +93,7 @@ namespace OpenTK
              VertexAttribPointerType.Float,
             false, 0, 0
              );
+            SendPrimitivesToShader();
         }
         // tick: renders one frame
         public void Tick()
@@ -138,7 +141,6 @@ namespace OpenTK
             {
                 //make sure we are using the right program, and thus the right shaders
                 GL.UseProgram(programID);
-
                 //execute shaders
                 //this line together with the similar lines in Init fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
                 GL.BindVertexArray(vertexArrayObject);
@@ -204,11 +206,11 @@ namespace OpenTK
                 if (primitive.GetType() == typeof(Triangle))
                 {
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.X, ((Triangle)primitive).PointA.Z),
-                    ScaleToPixel(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Z), primitive.Material.Color);
+                    ScaleToPixel(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Z), primitive.Material.DiffuseColor);
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Z),
-                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Z), primitive.Material.Color);
+                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Z), primitive.Material.DiffuseColor);
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.X, ((Triangle)primitive).PointA.Z),
-                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Z), primitive.Material.Color);
+                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Z), primitive.Material.DiffuseColor);
                 }
                 else if (primitive.GetType() == typeof(Sphere))
                 {
@@ -220,7 +222,7 @@ namespace OpenTK
                     {
                         ScreenHelper.DrawLine(ScaleToPixel(center.X + radius * MathF.Sin(radians), center.Y + radius * MathF.Cos(radians)),
                             ScaleToPixel(center.X + radius * MathF.Sin(radians+radianIncrement), 
-                            center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.Color);
+                            center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.DiffuseColor);
                         radians += radianIncrement;
                     }
                 }
@@ -447,11 +449,11 @@ namespace OpenTK
                 if (primitive.GetType() == typeof(Triangle))
                 {
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.Z, ((Triangle)primitive).PointA.Y),
-                    ScaleToPixel(((Triangle)primitive).PointB.Z, ((Triangle)primitive).PointB.Y), primitive.Material.Color);
+                    ScaleToPixel(((Triangle)primitive).PointB.Z, ((Triangle)primitive).PointB.Y), primitive.Material.DiffuseColor);
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointB.Z, ((Triangle)primitive).PointB.Y),
-                        ScaleToPixel(((Triangle)primitive).PointC.Z, ((Triangle)primitive).PointC.Y), primitive.Material.Color);
+                        ScaleToPixel(((Triangle)primitive).PointC.Z, ((Triangle)primitive).PointC.Y), primitive.Material.DiffuseColor);
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.Z, ((Triangle)primitive).PointA.Y),
-                        ScaleToPixel(((Triangle)primitive).PointC.Z, ((Triangle)primitive).PointC.Y), primitive.Material.Color);
+                        ScaleToPixel(((Triangle)primitive).PointC.Z, ((Triangle)primitive).PointC.Y), primitive.Material.DiffuseColor);
                 }
                 else if (primitive.GetType() == typeof(Sphere))
                 {
@@ -463,7 +465,7 @@ namespace OpenTK
                     {
                         ScreenHelper.DrawLine(ScaleToPixel(center.X + radius * MathF.Sin(radians), center.Y + radius * MathF.Cos(radians)),
                             ScaleToPixel(center.X + radius * MathF.Sin(radians+radianIncrement), 
-                            center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.Color);
+                            center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.DiffuseColor);
                         radians += radianIncrement;
                     }
                 }
@@ -690,11 +692,11 @@ namespace OpenTK
                 if (primitive.GetType() == typeof(Triangle))
                 {
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.X, ((Triangle)primitive).PointA.Y),
-                    ScaleToPixel(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Y), primitive.Material.Color);
+                    ScaleToPixel(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Y), primitive.Material.DiffuseColor);
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointB.X, ((Triangle)primitive).PointB.Y),
-                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Y), primitive.Material.Color);
+                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Y), primitive.Material.DiffuseColor);
                     ScreenHelper.DrawLine(ScaleToPixel(((Triangle)primitive).PointA.X, ((Triangle)primitive).PointA.Y),
-                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Y), primitive.Material.Color);
+                        ScaleToPixel(((Triangle)primitive).PointC.X, ((Triangle)primitive).PointC.Y), primitive.Material.DiffuseColor);
                 }
                 else if (primitive.GetType() == typeof(Sphere))
                 {
@@ -706,7 +708,7 @@ namespace OpenTK
                     {
                         ScreenHelper.DrawLine(ScaleToPixel(center.X + radius * MathF.Sin(radians), center.Y + radius * MathF.Cos(radians)),
                             ScaleToPixel(center.X + radius * MathF.Sin(radians+radianIncrement), 
-                            center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.Color);
+                            center.Y + radius * MathF.Cos(radians+radianIncrement)), primitive.Material.DiffuseColor);
                         radians += radianIncrement;
                     }
                 }
@@ -939,7 +941,7 @@ namespace OpenTK
                         if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
                         {
                             viewRay.T = tuple.Item1;
-                            viewRay.Color = tuple.Item2.Color;
+                            viewRay.Color = tuple.Item2.DiffuseColor;
                         }
                     }
                     //The ray didn't hit so the rest can be skipped
@@ -960,7 +962,7 @@ namespace OpenTK
                     //for each light
                     for (int l = 0; l < scene.PointLights.Count; l++)
                     {
-                        Vector3 lightPos = scene.PointLights[l];
+                        Vector3 lightPos = scene.PointLights[l].Position;
                         float distanceToLight = (lightPos - hitPos).Length;
                         Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
                         //for each object
@@ -1005,7 +1007,6 @@ namespace OpenTK
         private void PrepareRenderOpenGL()
         {
             GL.UseProgram(programID);
-
             //fill float array for camera data and send it to shader.
             cameraData = new float[]
             {
@@ -1020,10 +1021,7 @@ namespace OpenTK
         private void SendPrimitivesToShader()
         {
             //shader limit values:
-            int maxSpheres = 90;
-            int maxPlanes = 5;
-            int maxTriangles = 150;
-            int maxLights = 10;
+            int maxLights = 50;
 
             //fill float arrays for primitives data
             List<IPrimitive> primitives = scene.Primitives;
@@ -1039,12 +1037,10 @@ namespace OpenTK
                 else
                     trianglesAmount++;
             }
-            spheresAmount = Math.Min(spheresAmount, maxSpheres);
-            planesAmount = Math.Min(planesAmount, maxPlanes);
-            trianglesAmount = Math.Min(trianglesAmount, maxTriangles);
-            spheresData = new float[spheresAmount * 11];
-            planesData = new float[planesAmount * 13];
-            trianglesData = new float[trianglesAmount * 19];
+            spheresData = new SphereStruct[spheresAmount];
+            planesData = new PlaneStruct[planesAmount];
+            trianglesData = new TriangleStruct[trianglesAmount];
+
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
@@ -1053,109 +1049,75 @@ namespace OpenTK
                 IPrimitive primitive = primitives[i];
                 if (primitive is Sphere)
                 {
-                    if (sphereCounter > maxSpheres - 1)
-                        continue;
                     Sphere sphere = (Sphere)primitive;
-                    int offset = 11 * sphereCounter;
-                    spheresData[0 + offset] = sphere.Center.X;
-                    spheresData[1 + offset] = sphere.Center.Y;
-                    spheresData[2 + offset] = sphere.Center.Z;
-                    spheresData[3 + offset] = sphere.Radius;
-                    //diffuse color
-                    spheresData[4 + offset] = sphere.Material.Color.R;
-                    spheresData[5 + offset] = sphere.Material.Color.G;
-                    spheresData[6 + offset] = sphere.Material.Color.B;
-                    //space for specular color
-                    spheresData[7 + offset] = 0f;
-                    spheresData[8 + offset] = 0f;
-                    spheresData[9 + offset] = 0f;
-                    //space for specular exponent n
-                    spheresData[10 + offset] = 0f;
+                    Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
+                    Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
+                    spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth);
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
                 {
-                    if (planesCounter > maxPlanes - 1)
-                        continue;
                     Plane plane = (Plane)primitive;
-                    int offset = 13 * planesCounter;
-                    planesData[0 + offset] = plane.Center.X;
-                    planesData[1 + offset] = plane.Center.Y;
-                    planesData[2 + offset] = plane.Center.Z;
-                    planesData[3 + offset] = plane.Normal.X;
-                    planesData[4 + offset] = plane.Normal.Y;
-                    planesData[5 + offset] = plane.Normal.Z;
-                    //diffuse color
-                    planesData[6 + offset] = plane.Material.Color.R;
-                    planesData[7 + offset] = plane.Material.Color.G;
-                    planesData[8 + offset] = plane.Material.Color.B;
-                    //space for specular color
-                    planesData[9 + offset] = 0f;
-                    planesData[10 + offset] = 0f;
-                    planesData[11 + offset] = 0f;
-                    //space for specularity exponent n
-                    planesData[12 + offset] = 0f;
+                    Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
+                    Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
+                    planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth);
                     planesCounter++;
                 }
                 else
                 {
-                    if (trianglesCounter > maxTriangles - 1)
-                        continue;
                     Triangle triangle = (Triangle)primitive;
-                    int offset = 19 * trianglesCounter;
-                    trianglesData[0 + offset] = triangle.PointA.X;
-                    trianglesData[1 + offset] = triangle.PointA.Y;
-                    trianglesData[2 + offset] = triangle.PointA.Z;
-                    trianglesData[3 + offset] = triangle.PointB.X;
-                    trianglesData[4 + offset] = triangle.PointB.Y;
-                    trianglesData[5 + offset] = triangle.PointB.Z;
-                    trianglesData[6 + offset] = triangle.PointC.X;
-                    trianglesData[7 + offset] = triangle.PointC.Y;
-                    trianglesData[8 + offset] = triangle.PointC.Z;
-                    trianglesData[9 + offset] = triangle.Normal.X;
-                    trianglesData[10 + offset] = triangle.Normal.Y;
-                    trianglesData[11 + offset] = triangle.Normal.Z;
-                    //diffuse color
-                    trianglesData[12 + offset] = triangle.Material.Color.R;
-                    trianglesData[13 + offset] = triangle.Material.Color.G;
-                    trianglesData[14 + offset] = triangle.Material.Color.B;
-                    //space for specular color
-                    trianglesData[15 + offset] = 0f;
-                    trianglesData[16 + offset] = 0f;
-                    trianglesData[17 + offset] = 0f;
-                    //space for specularity exponent n
-                    trianglesData[18 + offset] = 0f;
+                    Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
+                    Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
+                    trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth);
                     trianglesCounter++;
                 }
             }
-            //only space for ten ligths
             int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
-            lightsData = new float[lightsAmount * 7];
+            lightsData = new float[lightsAmount * 6];
             for (int i = 0; i < lightsAmount; i++)
             {
-                int offset = i * 7;
-                lightsData[0 + offset] = scene.PointLights[i].X;
-                lightsData[1 + offset] = scene.PointLights[i].Y;
-                lightsData[2 + offset] = scene.PointLights[i].Z;
+                int offset = i * 6;
+                lightsData[0 + offset] = scene.PointLights[i].Position.X;
+                lightsData[1 + offset] = scene.PointLights[i].Position.Y;
+                lightsData[2 + offset] = scene.PointLights[i].Position.Z;
                 //space for light color
-                lightsData[3 + offset] = 0f;
-                lightsData[4 + offset] = 0f;
-                lightsData[5 + offset] = 0f;
-                //space for light intensity
-                lightsData[6 + offset] = 0f;
+                lightsData[3 + offset] = scene.PointLights[i].Intensity.R;
+                lightsData[4 + offset] = scene.PointLights[i].Intensity.G;
+                lightsData[5 + offset] = scene.PointLights[i].Intensity.B;
             }
-            float[] lengths = new float[]
+                int[] lengths = new int[]
             {
-                planesData.Length, spheresData.Length, trianglesData.Length, lightsData.Length
+                sphereCounter * 11, planesAmount * 13, trianglesAmount * 19, lightsData.Length
             };
             //send the primitives data to the shader
             GL.UseProgram(programID);
-            GL.Uniform1(uniform_planes, planesData.Length, planesData);
-            GL.Uniform1(uniform_triangles, trianglesData.Length, trianglesData);
-            GL.Uniform1(uniform_spheres, spheresData.Length, spheresData);
-            GL.Uniform1(uniform_lights, lightsData.Length, lightsData);
+            GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
             GL.Uniform1(uniform_lengths, lengths.Length, lengths);
-        }
+
+            //bind buffer for the spheres buffer ssbo0 
+            ssbo_spheres = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_spheres);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 0, ssbo_spheres);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, spheresData.Length * Marshal.SizeOf<SphereStruct>(), spheresData, BufferUsageHint.StaticRead);
+
+            //bind buffer for the planes buffer ssbo0 
+            ssbo_planes = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_planes);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 1, ssbo_planes);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, planesData.Length * Marshal.SizeOf<PlaneStruct>(), planesData, BufferUsageHint.StaticRead);
+
+            //bind buffer for the triangles buffer ssbo0 
+            ssbo_triangles = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_triangles);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 2, ssbo_triangles);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, trianglesData.Length * Marshal.SizeOf<TriangleStruct>(), trianglesData, BufferUsageHint.StaticRead);
+        }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {
             ID = GL.CreateShader(type);
@@ -1168,12 +1130,50 @@ namespace OpenTK
         #endregion
         void HandleInput()
         {
-            //moving camera
+            float minimumPlaneDistance = 0.05f;
             float delta = 1 / 60f;
-            float speed = 1f;
-            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftShift))
-                speed = 5f;
+            float speed = 3f;
+            float keySensitivity = 0.3f;
+            float mouseSensitivity = 0.05f;
+            float mouseScrollSpeed = 5f;
+            float zoomSpeed = 0.5f;
             Vector3 moveDirection = Vector3.Zero;
+
+            //mouse input
+            if (InputHelper.keyBoard.IsKeyReleased(Windowing.GraphicsLibraryFramework.Keys.M))
+                MouseEnabled = !MouseEnabled;
+            if(MouseEnabled)
+            {
+                //rotating
+                camera.RotateHorizontal(delta * mouseSensitivity * InputHelper.mouse.Delta.X * MathF.PI);
+                camera.RotateVertical(delta * mouseSensitivity * InputHelper.mouse.Delta.Y * MathF.PI);
+                //zooming
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + delta * InputHelper.mouse.ScrollDelta.Y * mouseScrollSpeed);
+            }
+
+            //zooming
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Z))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + delta * zoomSpeed);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.X))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter - delta * zoomSpeed);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.F))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter + 100 * delta * zoomSpeed);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.G))
+                camera.DistanceToCenter = MathF.Max(minimumPlaneDistance, camera.DistanceToCenter - 100 * delta * zoomSpeed);
+
+            //rotating with arrow keys
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Right))
+                camera.RotateHorizontal(delta * keySensitivity * MathF.PI);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Left))
+                camera.RotateHorizontal(delta * keySensitivity * -MathF.PI);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Up))
+                camera.RotateVertical(delta * keySensitivity * -MathF.PI);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Down))
+                camera.RotateVertical(delta * keySensitivity * MathF.PI);
+
+            //moving
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftShift))
+                speed *= 3f;
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.A))
                 moveDirection -= camera.RightDirection;
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D))
@@ -1182,7 +1182,11 @@ namespace OpenTK
                 moveDirection  += new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.S))
                 moveDirection -= new Vector3(camera.ViewDirection.X, 0f, camera.ViewDirection.Z);
-            if(moveDirection != Vector3.Zero)
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.Space))
+                moveDirection += new Vector3(0, 1, 0);
+            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.LeftControl))
+                moveDirection -= new Vector3(0, 1, 0);
+            if (moveDirection != Vector3.Zero)
                 camera.Position += moveDirection.Normalized() * speed * delta;
 
             //switching rendering

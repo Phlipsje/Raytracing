@@ -2,6 +2,7 @@
 using INFOGR2024Template.Helper_classes;
 using INFOGR2024Template.SceneElements;
 using OpenTK.Mathematics;
+using INFOGR2024Template.SceneElements;
 
 namespace INFOGR2024Template.Scenes
 {
@@ -10,8 +11,8 @@ namespace INFOGR2024Template.Scenes
     /// </summary>
     public interface IScene
     {
-        public List<IPrimitive> Primitives { get; }
-        public List<Vector3> PointLights { get; set; }
+        public List<IPrimitive> Primitives { get; set; }
+        public List<PointLight> PointLights { get; set; }
         public Camera Camera { get; set; }
         public RTree AccelerationStructure { get; protected set; }
         public float[] AccelerationStructureData { get; protected set; }
