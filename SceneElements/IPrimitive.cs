@@ -1,4 +1,5 @@
 using INFOGR2024Template;
+using INFOGR2024Template.Helper_classes;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -12,9 +13,6 @@ public interface IPrimitive
     
     public Material Material { get; set; } //The material of a primitive
     public Tuple<float, Material> RayIntersect(Ray ray); //If a ray hits this primitive (return scalar of ray direction (negative means not hit))
-    
-    //Returns 2 vector3s, first is the vector3 with the 3 smallest X, Y, and Z values, the second is with the 3 largest
-    //With these 2 vector3s, you get the edges of the entire primitive
-    public Vector3[] BoundingBox { get; } 
+    public BoundingBox BoundingBox { get; }
 }
 

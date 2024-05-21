@@ -11,7 +11,7 @@ namespace INFOGR2024Template.Scenes
         public Camera Camera {  get; set; }
         public List<Vector3> PointLights { get; set; }
 
-        public TestScene1() 
+        public TestScene1()
         {
             Vector3 offset = new Vector3(10, 0, 0);
             Camera = new Camera(new Vector3(1, 5f, -5), new Vector3(0f, -1f, 1f), new Vector3(1, 0f, 0), 1f, 1.6f, 0.9f);
@@ -49,7 +49,28 @@ namespace INFOGR2024Template.Scenes
                 new Vector3(10f, 2f, -2f) * lampExtraDistance,
                 new Vector3(0f, 3f, 10f) * lampExtraDistance
             };
+            
+            //This makes sure we used location based searching of intersections
+            //No more primitives should be added after this point (otherwise they won't be included)
+            //Also automatically updates the float array of data used by openGL
+            ((IScene)this).ActivateAccelerationStructure();
         }
+
+        private RTree AccelerationStructure { get; set; }
+        public float[] AccelerationStructureData { get; private set; }
+
+        float[] IScene.AccelerationStructureData
+        {
+            get => AccelerationStructureData;
+            set => AccelerationStructureData = value;
+        }
+
+        RTree IScene.AccelerationStructure
+        {
+            get => AccelerationStructure;
+            set => AccelerationStructure = value;
+        }
+
         public void Tick()
         {
             
