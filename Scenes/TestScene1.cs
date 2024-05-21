@@ -1,13 +1,7 @@
 ﻿using OpenTK.SceneElements;
 using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using INFOGR2024Template.SceneElements;
 using INFOGR2024Template.Helper_classes;
-using OpenTK.Helper_classes;
 
 namespace INFOGR2024Template.Scenes
 {

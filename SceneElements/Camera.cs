@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -15,21 +13,8 @@ public class Camera
     public float Width;
     public float Height;
     public Vector3 ViewDirection { get; private set; } //Unit vector, through center of camera plain
-    
-    //previous calculation of Rightdirection was not watertight. Don't know if there is a way to calculate it as there seem to be infinite solutions to the dot product in 3d
     public Vector3 RightDirection { get; private set; } //Unit vector
-
-    public Vector3 UpDirection
-    {
-        get
-        {
-            /*This method did not seem to work:
-            Quaternion quat = Quaternion.FromEulerAngles(new Vector3(0.5f * (float)Math.PI, 0, 0));
-            Vector3 vec = Vector3.Transform(ViewDirection, quat);
-            return vec;*/
-            return Vector3.Cross(ViewDirection, RightDirection);
-        }
-    }  //Unit vector
+    public Vector3 UpDirection => Vector3.Cross(ViewDirection, RightDirection); //Unit vector
     
     public Vector3 ImagePlaneCenter => Position + DistanceToCenter * ViewDirection;
     public float FieldOfView => MathF.Acos(Height / 2 / DistanceToCenter) * 2;

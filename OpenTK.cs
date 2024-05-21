@@ -202,7 +202,7 @@ namespace OpenTK
             // convert MyApplication.screen to OpenGL texture
             if (app != null)
             {
-                //preperation code that used to be in OnLoad, yet it has to occur every frame according to practical 0 exercise
+                //preparation code that used to be in OnLoad, yet it has to occur every frame according to practical 0 exercise
                 GL.ClearColor(0, 0, 0, 0);
                 if (allowPrehistoricOpenGL)
                     GL.Enable(EnableCap.Texture2D);
@@ -226,7 +226,7 @@ namespace OpenTK
                     GL.TexCoord2(0.0f, 0.0f); GL.Vertex2(-1.0f, 1.0f);
                     GL.End();
 
-                    // prepare for generic OpenGL rendering (code from practical 0 exercices)
+                    // prepare for generic OpenGL rendering (code from practical 0 exercises)
                     GL.Enable(EnableCap.DepthTest);
                     GL.Disable(EnableCap.Texture2D);
                     GL.Clear(ClearBufferMask.DepthBufferBit);
@@ -237,7 +237,7 @@ namespace OpenTK
                     GL.BindVertexArray(vertexArrayObject);
                     GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
                 }
-                //render the scene after preperations are finished, notice this occurs after tick.
+                //render the scene after preparations are finished, notice this occurs after tick.
                 app.RenderGL();
             }
             // tell OpenTK we're done rendering
