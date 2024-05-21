@@ -13,9 +13,9 @@ public class RTree
     private IScene scene { get; } //Used to get a reference to the list of primitives, otherwise we need an entire copy of the data structure
     private TreeNode rootNode { get; }
     private List<IPrimitive> primitives => scene.Primitives;
-    private int maximumChildNodes { get; } = 2; //Maximum amount of child nodes stored inside of 1 node
+    private int maximumChildNodes { get; } = 4; //Maximum amount of child nodes stored inside of 1 node
 
-    private int maximumValuesPerNode { get; } = 4; //Maximum amount of values that can be stored in 1 node before it overflows
+    private int maximumValuesPerNode { get; } = 3; //Maximum amount of values that can be stored in 1 node before it overflows
     //This holds the method to turn the treeNodes into a single array to pass as a buffer to OpenGL
 
     public RTree(IScene scene)
