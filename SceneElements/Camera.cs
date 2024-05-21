@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -14,21 +13,8 @@ public class Camera
     public float Width;
     public float Height;
     public Vector3 ViewDirection { get; private set; } //Unit vector, through center of camera plain
-    
-    //previous calculation of Rightdirection was not watertight. Don't know if there is a way to calculate it as there seem to be infinite solutions to the dot product in 3d
     public Vector3 RightDirection { get; private set; } //Unit vector
-
-    public Vector3 UpDirection
-    {
-        get
-        {
-            /*This method did not seem to work:
-            Quaternion quat = Quaternion.FromEulerAngles(new Vector3(0.5f * (float)Math.PI, 0, 0));
-            Vector3 vec = Vector3.Transform(ViewDirection, quat);
-            return vec;*/
-            return Vector3.Cross(ViewDirection, RightDirection);
-        }
-    }  //Unit vector
+    public Vector3 UpDirection => Vector3.Cross(ViewDirection, RightDirection); //Unit vector
     
     public Vector3 ImagePlaneCenter => Position + DistanceToCenter * ViewDirection;
     public float FieldOfView => MathF.Acos(Height / 2 / DistanceToCenter) * 2;
@@ -36,11 +22,11 @@ public class Camera
 
     public Vector3 TopLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (UpDirection * Height / 2) +
                                          (-RightDirection * Width / 2);
+    public Vector3 BottomLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
+                                         (-RightDirection * Width / 2);
     public Vector3 TopRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (UpDirection * Height / 2) +
                                           (RightDirection * Width / 2);
     public Vector3 BottomRightCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) +
-                                         (RightDirection * Width / 2);
-    public Vector3 BottomLeftCameraPlane => Position + (ViewDirection * DistanceToCenter) + (-UpDirection * Height / 2) -
                                          (RightDirection * Width / 2);
 
     //This will automatically focus on an object on (0,0,0)
@@ -50,10 +36,10 @@ public class Camera
         DistanceToCenter = 1f;
         Width = 1.6f;
         Height = 0.9f;
-        ViewDirection = new Vector3(1f, -1f, 1f);
+        ViewDirection = new Vector3(1f, 0f, 1f);
+        RightDirection = new Vector3(1f, 0, -1f);
         ViewDirection.Normalize();
-        //Rotate around Y axis
-        RightDirection = new Vector3(ViewDirection.Z, ViewDirection.Y, -ViewDirection.X);
+        RightDirection.Normalize();
     }
     
     /// <summary>
@@ -79,10 +65,12 @@ public class Camera
             Debug.WriteLine("dot product of viewdirection and rightdirection is not near zero, dot:" + dot + ". Make sure they are orthogonal to form the right basis");
         }
     }
-
-    public void SetDirection(Vector3 viewDirection, Vector3 rightDirection)
+    
+    public void SetViewDirection(Vector3 viewDirection, Vector3 rightDirection)
     {
-        ViewDirection = viewDirection.Normalized();
-        RightDirection = rightDirection.Normalized();
+        viewDirection.Normalize();
+        rightDirection.Normalize();
+        ViewDirection = viewDirection;
+        RightDirection = rightDirection;
     }
 }
