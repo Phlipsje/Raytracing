@@ -316,18 +316,28 @@ public class RTree
             children[0].AddElement(primitivePointers[index0]);
             children[1].AddElement(primitivePointers[index1]);
             
-            //Just reinsert every node (except the 2 that were just added)
-            for (int i = 0; i < primitivePointers.Length; i++)
+            //Throw away old list of pointers (but keep a copy until method is finished)
+            int[] pointersCopy = new int[primitivePointers.Length];
+            primitivePointers.CopyTo(pointersCopy, 0);
+            primitivePointers = Array.Empty<int>();
+            
+            //Finally, just reinsert every node (except the 2 that were just added) into the parent, to redistribute
+            for (int i = 0; i < pointersCopy.Length; i++)
             {
                 if (i == index0 || i == index1)
                     continue;
-                
-                if(primitivePointers[i] != -1)
-                    AddElement(primitivePointers[i]);
-            }
 
-            //Throw away old list of pointers
-            primitivePointers = Array.Empty<int>();
+                if (parent != null)
+                {
+                    if(pointersCopy[i] != -1)
+                        parent.AddElement(pointersCopy[i]);
+                }
+                else
+                {
+                    if(pointersCopy[i] != -1)
+                        AddElement(pointersCopy[i]);
+                }
+            }
         }
         
         private void UpdateBoundingBox()
