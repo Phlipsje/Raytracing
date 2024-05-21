@@ -9,7 +9,7 @@ using OpenTK.SceneElements;
 
 namespace INFOGR2024Template.SceneElements
 {
-    internal class Plane : IPrimitive
+    public class Plane : IPrimitive
     {
         public Vector3 Center { get; set; }
         public Vector3 Normal { get; set; }

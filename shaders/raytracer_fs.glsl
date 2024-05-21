@@ -5,6 +5,8 @@ const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
 const int maxBounces = 10;
+const int stackSize = 20; //Used for stack
+int counter = -1; //Used for stack
 
 out vec4 outputColor;
 //max 50 lights
@@ -54,6 +56,27 @@ layout(binding = 1, std430) readonly buffer ssbo1
 layout(binding = 2, std430) readonly buffer ssbo2
 {
 	Triangle triangles[];
+};
+
+
+//Used to implement recursion
+//Note, is static size and doesn't check size, if program crashes, increase size (or
+struct Stack {
+    int[stackSize] stackPointers;
+    
+    //Add to end of stack
+    void Push(int value)
+    {
+        //First increments the counter, then adds the value
+        stackPointers[++counter] = value;
+    }
+    
+    //Remove from stack
+    int Pop()
+    {
+        //Returns the value, then decrements the value
+        return stackPointers[counter--];
+    }
 };
 
 //first three values of vec4 form the normal vector, last value is the t value

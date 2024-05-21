@@ -1,3 +1,4 @@
+using INFOGR2024Template.SceneElements;
 using INFOGR2024Template.Scenes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
@@ -12,7 +13,8 @@ public class RTree
 {
     private IScene scene { get; } //Used to get a reference to the list of primitives, otherwise we need an entire copy of the data structure
     private TreeNode rootNode { get; }
-    private List<IPrimitive> primitives => scene.Primitives;
+    private List<Sphere> spherePrimitives => scene.SpherePrimitives;
+    private List<Triangle> trianglePrimitives => scene.TrianglePrimitives;
     private int maximumChildNodes { get; } = 4; //Maximum amount of child nodes stored inside of 1 node
 
     private int maximumValuesPerNode { get; } = 3; //Maximum amount of values that can be stored in 1 node before it overflows
@@ -21,7 +23,7 @@ public class RTree
     public RTree(IScene scene)
     {
         this.scene = scene;
-        rootNode = new TreeNode(maximumChildNodes, maximumValuesPerNode, primitives);
+        rootNode = new TreeNode(maximumChildNodes, maximumValuesPerNode, spherePrimitives, trianglePrimitives);
     }
 
     public float[] TurnIntoFloatArray()
@@ -47,16 +49,18 @@ public class RTree
         private int maximumChildNodes { get; }
         public int[] primitivePointers; //If there are no other lower nodes, then store the resulting primitives
         public BoundingBox boundingBox;
-        private List<IPrimitive> primitives { get; }
+        private List<Sphere> spherePrimitives { get; }
+        private List<Triangle> trianglePrimitives { get; }
         private TreeNode parent;
 
-        public TreeNode(int maximumChildNodes, int maximumValuesPerNode, List<IPrimitive> primitives)
+        public TreeNode(int maximumChildNodes, int maximumValuesPerNode, List<Sphere> spherePrimitives, List<Triangle> trianglePrimitives)
         {
             isEmpty = true;
             isLeaf = true;
             this.maximumChildNodes = maximumChildNodes;
             primitivePointers = new int[maximumValuesPerNode];
-            this.primitives = primitives;
+            this.spherePrimitives = spherePrimitives;
+            this.trianglePrimitives = trianglePrimitives;
             for (int i = 0; i < maximumValuesPerNode; i++)
             {
                 //The 'null' value of the pointer
@@ -64,6 +68,16 @@ public class RTree
             }
             //Update the bounding box (which will be empty) to make sure it at least has a value
             UpdateBoundingBox();
+        }
+
+        private IPrimitive GetPrimitive(int primitivePointer)
+        {
+            if (primitivePointer < spherePrimitives.Count)
+            {
+                return spherePrimitives[primitivePointer];
+            }
+
+            return trianglePrimitives[primitivePointer - spherePrimitives.Count];
         }
 
         /// <summary>
@@ -175,7 +189,7 @@ public class RTree
             }
             else //In case it is a branch
             {
-                BoundingBox boundingBoxOfPrimitive = primitives[primitivePointer].BoundingBox;
+                BoundingBox boundingBoxOfPrimitive = GetPrimitive(primitivePointer).BoundingBox;
                 
                 //If it is already fully in a boundingBox, add it to there
                 foreach (TreeNode treeNode in children)
@@ -273,7 +287,7 @@ public class RTree
             children = new TreeNode[maximumChildNodes];
             for (int i = 0; i < children.Length; i++)
             {
-                children[i] = new TreeNode(maximumChildNodes, primitivePointers.Length, primitives);
+                children[i] = new TreeNode(maximumChildNodes, primitivePointers.Length, spherePrimitives, trianglePrimitives);
                 children[i].parent = this;
             }
             
@@ -291,8 +305,8 @@ public class RTree
                     if (i == j)
                         continue;
 
-                    IPrimitive primitive0 = primitives[primitivePointers[i]];
-                    IPrimitive primitive1 = primitives[primitivePointers[j]];
+                    IPrimitive primitive0 = GetPrimitive(primitivePointers[i]);
+                    IPrimitive primitive1 = GetPrimitive(primitivePointers[j]);
                     
                     float smallX = MathF.Min(primitive0.BoundingBox.MinimumValues.X, primitive1.BoundingBox.MinimumValues.X);
                     float smallY = MathF.Min(primitive0.BoundingBox.MinimumValues.Y, primitive1.BoundingBox.MinimumValues.Y);
@@ -357,12 +371,12 @@ public class RTree
                     if (primitivePointer == -1)
                         continue;
                     
-                    smallX = MathF.Min(smallX, primitives[primitivePointer].BoundingBox.MinimumValues.X);
-                    smallY = MathF.Min(smallY, primitives[primitivePointer].BoundingBox.MinimumValues.Y);
-                    smallZ = MathF.Min(smallZ, primitives[primitivePointer].BoundingBox.MinimumValues.Z);
-                    bigX = MathF.Max(bigX, primitives[primitivePointer].BoundingBox.MaximumValues.X);
-                    bigY = MathF.Max(bigY, primitives[primitivePointer].BoundingBox.MaximumValues.Y);
-                    bigZ = MathF.Max(bigZ, primitives[primitivePointer].BoundingBox.MaximumValues.Z);
+                    smallX = MathF.Min(smallX, GetPrimitive(primitivePointer).BoundingBox.MinimumValues.X);
+                    smallY = MathF.Min(smallY, GetPrimitive(primitivePointer).BoundingBox.MinimumValues.Y);
+                    smallZ = MathF.Min(smallZ, GetPrimitive(primitivePointer).BoundingBox.MinimumValues.Z);
+                    bigX = MathF.Max(bigX, GetPrimitive(primitivePointer).BoundingBox.MaximumValues.X);
+                    bigY = MathF.Max(bigY, GetPrimitive(primitivePointer).BoundingBox.MaximumValues.Y);
+                    bigZ = MathF.Max(bigZ, GetPrimitive(primitivePointer).BoundingBox.MaximumValues.Z);
                 }
             }
             else //In the case it is a branch

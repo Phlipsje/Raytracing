@@ -12,7 +12,7 @@ using OpenTK.SceneElements;
 
 namespace INFOGR2024Template.SceneElements
 {
-    internal class Triangle : IPrimitive
+    public class Triangle : IPrimitive
     {
         public Vector3 Center { get; set; }
         public Vector3 Normal { get; private set; }

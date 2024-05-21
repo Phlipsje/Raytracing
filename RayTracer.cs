@@ -125,9 +125,6 @@ namespace OpenTK
                 case CameraMode.Debug3D:
                     RenderDebug3D();
                     break;
-                case CameraMode.Raytracing:
-                    RenderRaytracer();
-                    break;
                 case CameraMode.OpenGL:
                     //in this case actual rendering is handled by RenderGL()
                     PrepareRenderOpenGL();
@@ -181,16 +178,21 @@ namespace OpenTK
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
             Vector2 topRightPlane = new Vector2(viewingRadius, viewingRadius);
             
-            //Draw all primitives, drawn first to be drawn under the camera things
+            //Draw all primitives (except planes), drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.Primitives)
+            foreach (var primitive in scene.SpherePrimitives)
             {
-                //Don't draw planes
-                if (primitive.GetType() == typeof(Plane))
-                {
-                    continue;
-                }
-
+                //Check if primitive would be offscreen
+                if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.X < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Z < bottomLeftPlane.Y) continue;
+                
+                //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            foreach (var primitive in scene.TrianglePrimitives)
+            {
                 //Check if primitive would be offscreen
                 if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
                 if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.Y) continue;
@@ -424,16 +426,21 @@ namespace OpenTK
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
             Vector2 topRightPlane = new Vector2(viewingRadius, viewingRadius);
             
-            //Draw all primitives, drawn first to be drawn under the camera things
+            //Draw all primitives (except planes), drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.Primitives)
+            foreach (var primitive in scene.SpherePrimitives)
             {
-                //Don't draw planes
-                if (primitive.GetType() == typeof(Plane))
-                {
-                    continue;
-                }
-
+                //Check if primitive would be offscreen
+                if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.Z < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Y < bottomLeftPlane.Y) continue;
+                
+                //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            foreach (var primitive in scene.TrianglePrimitives)
+            {
                 //Check if primitive would be offscreen
                 if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.X) continue;
                 if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
@@ -667,16 +674,21 @@ namespace OpenTK
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
             Vector2 topRightPlane = new Vector2(viewingRadius, viewingRadius);
             
-            //Draw all primitives, drawn first to be drawn under the camera things
+            //Draw all primitives (except planes), drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.Primitives)
+            foreach (var primitive in scene.SpherePrimitives)
             {
-                //Don't draw planes
-                if (primitive.GetType() == typeof(Plane))
-                {
-                    continue;
-                }
-
+                //Check if primitive would be offscreen
+                if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.X < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Y < bottomLeftPlane.Y) continue;
+                
+                //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            foreach (var primitive in scene.TrianglePrimitives)
+            {
                 //Check if primitive would be offscreen
                 if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
                 if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
@@ -934,10 +946,10 @@ namespace OpenTK
                     Ray viewRay = new Ray(camera.Position, direction);
 
                     //for every object in the scene
-                    for(int i = 0; i < scene.Primitives.Count; i++) 
+                    for(int i = 0; i < scene.PlanePrimitives.Count + scene.SpherePrimitives.Count + scene.TrianglePrimitives.Count; i++) 
                     {
                         //Check for intersection and if the object is the closest hit object so far, store the distance and color
-                        Tuple<float, Material> tuple = scene.Primitives[i].RayIntersect(viewRay);
+                        Tuple<float, Material> tuple = GetPrimitive(i).RayIntersect(viewRay);
                         if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
                         {
                             viewRay.T = tuple.Item1;
@@ -966,10 +978,10 @@ namespace OpenTK
                         float distanceToLight = (lightPos - hitPos).Length;
                         Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
                         //for each object
-                        for (int p = 0; p < scene.Primitives.Count; p++)
+                        for (int p = 0; p < scene.PlanePrimitives.Count + scene.SpherePrimitives.Count + scene.TrianglePrimitives.Count; p++)
                         {
                             //check if it is between the lamp and the light
-                            Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
+                            Tuple<float, Material> tuple = GetPrimitive(p).RayIntersect(shadowRay);
                             if (tuple.Item1 > 0.001f && tuple.Item1 < distanceToLight)
                             {
                                 shadowRay.T = tuple.Item1;
@@ -994,12 +1006,19 @@ namespace OpenTK
             }
             Debug.WriteLine("frame finished");
         }
-        #endregion
 
-        #region Raytracer
-        private void RenderRaytracer()
+        private IPrimitive GetPrimitive(int primitivePointer)
         {
-            
+            if (primitivePointer < scene.PlanePrimitives.Count)
+            {
+                return scene.PlanePrimitives[primitivePointer];
+            }
+            if (primitivePointer < scene.PlanePrimitives.Count + scene.SpherePrimitives.Count)
+            {
+                return scene.SpherePrimitives[primitivePointer - scene.PlanePrimitives.Count];
+            }
+
+            return scene.TrianglePrimitives[primitivePointer - (scene.SpherePrimitives.Count + scene.PlanePrimitives.Count)];
         }
         #endregion
 
@@ -1024,53 +1043,33 @@ namespace OpenTK
             int maxLights = 50;
 
             //fill float arrays for primitives data
-            List<IPrimitive> primitives = scene.Primitives;
-            int spheresAmount = 0;
-            int planesAmount = 0;
-            int trianglesAmount = 0;
-            for (int i = 0; i < primitives.Count; i++)
-            {
-                if (primitives[i] is Sphere)
-                    spheresAmount++;
-                else if (primitives[i] is Plane)
-                    planesAmount++;
-                else
-                    trianglesAmount++;
-            }
-            spheresData = new SphereStruct[spheresAmount];
-            planesData = new PlaneStruct[planesAmount];
-            trianglesData = new TriangleStruct[trianglesAmount];
+            planesData = new PlaneStruct[scene.PlanePrimitives.Count];
+            spheresData = new SphereStruct[scene.SpherePrimitives.Count];
+            trianglesData = new TriangleStruct[scene.TrianglePrimitives.Count];
 
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
-            for (int i = 0; i < primitives.Count; i++)
+            foreach (Plane plane in scene.PlanePrimitives)
             {
-                IPrimitive primitive = primitives[i];
-                if (primitive is Sphere)
-                {
-                    Sphere sphere = (Sphere)primitive;
-                    Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
-                    spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth);
-                    sphereCounter++;
-                }
-                else if (primitive is Plane)
-                {
-                    Plane plane = (Plane)primitive;
-                    Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
-                    planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth);
-                    planesCounter++;
-                }
-                else
-                {
-                    Triangle triangle = (Triangle)primitive;
-                    Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
-                    trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth);
-                    trianglesCounter++;
-                }
+                Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
+                Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
+                planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth);
+                planesCounter++;
+            }
+            foreach (Sphere sphere in scene.SpherePrimitives)
+            {
+                Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
+                Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
+                spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth);
+                sphereCounter++;
+            }
+            foreach (Triangle triangle in scene.TrianglePrimitives)
+            {
+                Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
+                Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
+                trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth);
+                trianglesCounter++;
             }
             int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
             lightsData = new float[lightsAmount * 6];
@@ -1085,9 +1084,9 @@ namespace OpenTK
                 lightsData[4 + offset] = scene.PointLights[i].Intensity.G;
                 lightsData[5 + offset] = scene.PointLights[i].Intensity.B;
             }
-                int[] lengths = new int[]
+            int[] lengths = new int[]
             {
-                sphereCounter * 11, planesAmount * 13, trianglesAmount * 19, lightsData.Length
+                sphereCounter * 11, scene.PlanePrimitives.Count * 13, scene.TrianglePrimitives.Count * 19, lightsData.Length
             };
             //send the primitives data to the shader
             GL.UseProgram(programID);
@@ -1201,7 +1200,6 @@ namespace OpenTK
     {
         Debug2D,
         Debug3D,
-        Raytracing,
         OpenGL
     }
 }
