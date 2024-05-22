@@ -6,6 +6,10 @@ const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
 const int maxBounces = 10;
 
+//this will be squared, so setting this value to 3 will result in 9 samples. This value will make the ray tracer n^2 times slower btw
+const int antiAliasingSamplesRoot = 2;
+
+
 out vec4 outputColor;
 //max 50 lights
 uniform float[300] lights;
@@ -183,11 +187,8 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 	}
 }
 
-//This code will be run for each pixel on the screen
-void main()
+vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 {
-	float x = gl_FragCoord.x;
-	float y = gl_FragCoord.y;
 	float width = camera[12];
 	float height = camera[13];
 	vec3 bottomLeft = vec3(camera[3], camera[4], camera[5]);
@@ -197,7 +198,7 @@ void main()
 	//FOLLOWING SECTION: First viewray to determine closest object
 	//determine viewray from cameraData
 	vec3 rayOrigin = vec3(camera[0], camera[1], camera[2]);
-	vec3 rayDirection = normalize( (bottomLeft + (x/width) * (bottomRight - bottomLeft) + (y/height) * (topLeft - bottomLeft)) - rayOrigin );
+	vec3 rayDirection = normalize((bottomLeft + (x / width) * (bottomRight - bottomLeft) + (y / height) * (topLeft - bottomLeft)) - rayOrigin);
 	//t is the distance to the found intersections, it starts of as float.maxValue, because no intersection will ever return it. If t is this value, no intersections were found.
 	float t = 3.402823466e+38;
 	//we want to save the material values of the primitive which we intersect with.
@@ -205,7 +206,7 @@ void main()
 	bool hitPureSpecular = false;
 	vec3 hitSpecularColor = vec3(0, 0, 0);
 	//!!dont remember if this should be 1, probably should be 0, NEED TO TEST!!
-	float hitSpecularity = 1f;
+	float hitSpecularity = 1.0f;
 	//we also need to save the normal for the shading calculations later.
 	vec3 hitNormal = vec3(0, 0, 0);
 
@@ -259,7 +260,7 @@ void main()
 		hitColor = vec3(0, 0, 0);
 		hitPureSpecular = false;
 		hitSpecularColor = vec3(0, 0, 0);
-		hitSpecularity = 1f;
+		hitSpecularity = 1.0f;
 		hitNormal = vec3(0, 0, 0);
 
 		//calculate new intersection
@@ -270,14 +271,13 @@ void main()
 	//if nothing got hit, return the color of the sky, t only changes if any of the primitives got hit by the viewray and t was instantiated to be float.maxValue
 	if (t == 3.402823466e+38)
 	{
-		outputColor = vec4(finalColor + skyColor * mirrorColorMultiplier, 1.0f);
-		return;
+		return finalColor + skyColor * mirrorColorMultiplier;
 	}
 	//if max mounces reached let the final added component of the color be the color black
 	if (hitPureSpecular)
 	{
 		//Peter said just return black but if the mirrors also had a diffuse component i think we should still output that, if no mirrors had a diffuse component finalColor will be black.
-		outputColor = vec4(finalColor, 1.0f);
+		return finalColor;
 	}
 
 	//FOLLOWING SECTION: calculate lighting of point on closest object
@@ -292,7 +292,7 @@ void main()
 		float distanceToLight = length(lightPos - hitPos);
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
-		
+
 		//if no objects were in the way of the light, add the appropriate lighting to it.
 		if (!ObjectInWayOfLight(distanceToLight, shadowRayOrigin, shadowRayDirection))
 		{
@@ -307,6 +307,25 @@ void main()
 	}
 	//adjust for mirrors
 	finalColor += combinedColor * mirrorColorMultiplier;
+	return finalColor;
+}
+
+//This code will be run for each pixel on the screen
+void main()
+{
+	vec3 sumOfColors = vec3(0.0f, 0.0f, 0.0f);
+	float fraction = 1.0f / antiAliasingSamplesRoot;
+	float halfFraction = fraction / 2.0f;
+	for (int x = 0; x < antiAliasingSamplesRoot; x++)
+	{
+		for (int y = 0; y < antiAliasingSamplesRoot; y++)
+		{
+			float planeX = gl_FragCoord.x - 0.5f + halfFraction + x * fraction;
+			float planeY = gl_FragCoord.y - 0.5f + halfFraction + y * fraction;
+			sumOfColors += CalculateColorOfPointOnCameraPlane(planeX, planeY);
+		}
+	}
+	vec3 averageColor = sumOfColors / (antiAliasingSamplesRoot * antiAliasingSamplesRoot);
 	//output result of calculations to the screen
-	outputColor = vec4(finalColor, 1.0f);
+	outputColor = vec4(averageColor, 1.0f);
 }
