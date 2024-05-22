@@ -20,7 +20,7 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_camera, uniform_ligths, uniform_lengths;
+        int uniform_camera, uniform_ligths, uniform_lengths, uniform_randoms;
         int ssbo_spheres, ssbo_planes, ssbo_triangles;
         float[] cameraData, lightsData;
         SphereStruct[] spheresData;
@@ -30,6 +30,8 @@ namespace OpenTK
         private Camera camera => scene.Camera;
         private IScene scene;
         private ViewAxis viewAxis = ViewAxis.Topdown;
+
+        private Random random = new Random();
         // constructor
         public RayTracer()
         {
@@ -47,7 +49,7 @@ namespace OpenTK
             //load shaders
             programID = GL.CreateProgram();
             LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
-            LoadShader("../../../shaders/raytracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
+            LoadShader("../../../shaders/pathtracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
             GL.LinkProgram(programID);
             Debug.WriteLine(GL.GetProgramInfoLog(programID));
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
@@ -76,6 +78,7 @@ namespace OpenTK
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
+            uniform_randoms = GL.GetUniformLocation(programID, "randoms");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
             Debug.WriteLine("ligthsLoc: " + uniform_ligths);
@@ -1017,6 +1020,12 @@ namespace OpenTK
                 ScreenHelper.screen.width, ScreenHelper.screen.height
             };
             GL.Uniform1(uniform_camera, cameraData.Length, cameraData);
+            float[] randomData = new float[9];
+            for (int i = 0; i < randomData.Length; i++)
+            {
+                randomData[i] = random.NextSingle();
+            }
+            GL.Uniform1(uniform_randoms, randomData.Length, randomData);
         }
         private void SendPrimitivesToShader()
         {
@@ -1085,10 +1094,15 @@ namespace OpenTK
                 lightsData[4 + offset] = scene.PointLights[i].Intensity.G;
                 lightsData[5 + offset] = scene.PointLights[i].Intensity.B;
             }
-                int[] lengths = new int[]
+            int[] lengths = new int[]
             {
                 sphereCounter * 11, planesAmount * 13, trianglesAmount * 19, lightsData.Length
             };
+            Vector4[] lastScreen = new Vector4[ScreenHelper.screen.width * ScreenHelper.screen.height];
+            for (int i = 0; i < lastScreen.Length; i++)
+            {
+                lastScreen[i] = new Vector4(0, 0, 0, 1.0f);
+            }
             //send the primitives data to the shader
             GL.UseProgram(programID);
             GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
@@ -1102,7 +1116,7 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, spheresData.Length * Marshal.SizeOf<SphereStruct>(), spheresData, BufferUsageHint.StaticRead);
 
-            //bind buffer for the planes buffer ssbo0 
+            //bind buffer for the planes buffer ssbo1
             ssbo_planes = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_planes);
             //not sure about the order of last two lines
@@ -1110,13 +1124,21 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, planesData.Length * Marshal.SizeOf<PlaneStruct>(), planesData, BufferUsageHint.StaticRead);
 
-            //bind buffer for the triangles buffer ssbo0 
+            //bind buffer for the triangles buffer ssbo2 
             ssbo_triangles = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_triangles);
             //not sure about the order of last two lines
             GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 2, ssbo_triangles);
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, trianglesData.Length * Marshal.SizeOf<TriangleStruct>(), trianglesData, BufferUsageHint.StaticRead);
+            
+            //bind buffer for the triangles buffer ssbo3
+            int ssbo_lastScreen = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_lastScreen);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 3, ssbo_lastScreen);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, 16 * lastScreen.Length, lastScreen, BufferUsageHint.DynamicDraw);
         }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {
