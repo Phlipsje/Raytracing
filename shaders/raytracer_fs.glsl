@@ -6,6 +6,8 @@ uniform float[300] lights;
 uniform int[4] lengths;
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
+//Time
+uniform float timer;
 //SSBO for primitive data
 layout(binding = 0, std430) readonly buffer ssbo1
 {
@@ -55,18 +57,44 @@ vec2 TextureMappingTriangle (vec3 intersectionPoint, vec3 pointA, vec3 pointB, v
 	return vec2(u,v);
 
 }
+//--------------------------------------TEXTURES-------------------------------------
+mat2 rotate(float angle)
+{
+	float c = cos(angle);
+	float s = sin(angle);
 
+	return mat2(c, -s, s, c);
+}
 
 vec3 Texturing1 (vec2 uv)
 {
-	
-    //varying pixel color
-    vec3 col = vec3(1,1,1);
+	vec4 result = vec4(0,0,0,1);
 
-    // Output to screen
-    return vec3(col);
+	float t = 1.;
+	float offset = -5. * timer;
+	float base = 100. * length(uv);
+
+	float d = sin(-timer + 15. * length(uv));
+	d *= d * d;
+
+	mat2 rot = rotate(5. * length(uv));
+	uv += .5;
+
+	uv = abs(rot * uv);
+
+	for (int p = 0; p < 3; p++)
+	{
+		result[p] = sin(offset + t * base) - cos(20. * uv.x) - cos(20. * uv.y);
+		t += 0.05;
+	}
+
+	result.xyz *= result.xyz;
+	result.xyz = 1. - result.xyz;
+
+	return vec4(result * d).xyz;
 }
 
+//------------------------------------TEXTURES----------------------------------------------
 
 vec3 AplieTexture (vec2 uv, float index)
 {
@@ -246,7 +274,7 @@ void main()
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
 		float shadowRayT = -1;
-		for (int i = 0; i < lengths[0]; i += 11)
+		for (int i = 0; i < lengths[0]; i += 12)
 		{
 			float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), primitives[i + 3]).w;
 			if (result > epsilon && result < distanceToLight)
@@ -259,7 +287,7 @@ void main()
 		{
 			int offset = lengths[0];
 			int end = offset + lengths[1];
-			for (int i = offset; i < end; i += 13)
+			for (int i = offset; i < end; i += 20)
 			{
 				float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]), vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]));
 				if (result > epsilon && result < distanceToLight)
@@ -272,7 +300,7 @@ void main()
 			{
 				offset += lengths[1];
 				end = offset + lengths[2];
-				for (int i = offset; i < end; i += 19)
+				for (int i = offset; i < end; i += 26)
 				{
 					float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, vec3(primitives[i], primitives[i + 1], primitives[i + 2]),
 						vec3(primitives[i + 3], primitives[i + 4], primitives[i + 5]),
