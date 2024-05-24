@@ -21,57 +21,6 @@ namespace INFOGR2024Template.Scenes
 
         public void Tick();
 
-        /*
-        //Will put the primitives in order of shape, because that is how we handel it in the fragment shader
-        //List order: Planes, Spheres, Triangles
-        public void SortPrimitives()
-        {
-            //Making it as an array, so that it doesn't keep having to resize
-            //+3 because slots 0, 1, and 2, indicate where the 3 different shapes start
-            IPrimitive[] tempPrimitives = new IPrimitive[Primitives.Count + 3];
-
-            int count = 0;
-            int planeCount = 0;
-            int sphereCount = 0;
-            int triangleCount = 0;
-            for (int i = 0; i < 3; i++)
-            {
-                foreach (IPrimitive primitive in Primitives)
-                {
-                    switch (i)
-                    {
-                        case 0: //Planes
-                            if (primitive.GetType() == typeof(Plane))
-                            {
-                                tempPrimitives[2 + count] = primitive;
-                                count++;
-                                planeCount++;
-                            }
-                            break;
-                        case 1: //Spheres
-                            if (primitive.GetType() == typeof(Plane))
-                            {
-                                tempPrimitives[2 + count] = primitive;
-                                count++;
-                                sphereCount++;
-                            }
-                            break;
-                        case 2: //Triangles
-                            if (primitive.GetType() == typeof(Plane))
-                            {
-                                tempPrimitives[2 + count] = primitive;
-                                count++;
-                                triangleCount++;
-                            }
-                            break;
-                    }
-                }
-            }
-            
-            tempPrimitives[0] =
-        }
-        */
-
         public void ActivateAccelerationStructure()
         {
             AccelerationStructure = new RTree(this);

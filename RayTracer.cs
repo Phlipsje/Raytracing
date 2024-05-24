@@ -21,7 +21,7 @@ namespace OpenTK
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
         int uniform_camera, uniform_ligths, uniform_lengths;
-        int ssbo_spheres, ssbo_planes, ssbo_triangles;
+        int ssbo_spheres, ssbo_planes, ssbo_triangles, ssbo_accelerationStructure;
         float[] cameraData, lightsData;
         SphereStruct[] spheresData;
         PlaneStruct[] planesData;
@@ -1071,6 +1071,8 @@ namespace OpenTK
                 trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth);
                 trianglesCounter++;
             }
+            if(scene.PointLights.Count > maxLights)
+                Console.WriteLine("Warning: scene light count exceeds maximum! Some lights won't be calculated!");
             int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
             lightsData = new float[lightsAmount * 6];
             for (int i = 0; i < lightsAmount; i++)
@@ -1101,7 +1103,7 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, spheresData.Length * Marshal.SizeOf<SphereStruct>(), spheresData, BufferUsageHint.StaticRead);
 
-            //bind buffer for the planes buffer ssbo0 
+            //bind buffer for the planes buffer ssbo1
             ssbo_planes = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_planes);
             //not sure about the order of last two lines
@@ -1109,13 +1111,21 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, planesData.Length * Marshal.SizeOf<PlaneStruct>(), planesData, BufferUsageHint.StaticRead);
 
-            //bind buffer for the triangles buffer ssbo0 
+            //bind buffer for the triangles buffer ssbo2
             ssbo_triangles = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_triangles);
             //not sure about the order of last two lines
             GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 2, ssbo_triangles);
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, trianglesData.Length * Marshal.SizeOf<TriangleStruct>(), trianglesData, BufferUsageHint.StaticRead);
+            
+            //bind buffer for the acceleration structure buffer ssbo3
+            ssbo_accelerationStructure = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_accelerationStructure);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 3, ssbo_accelerationStructure);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, scene.AccelerationStructureData.Length, scene.AccelerationStructureData, BufferUsageHint.StaticRead);
         }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {

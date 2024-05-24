@@ -5,8 +5,6 @@ const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
 const int maxBounces = 10;
-const int stackSize = 20; //Used for stack
-int counter = -1; //Used for stack
 
 out vec4 outputColor;
 //max 50 lights
@@ -57,27 +55,47 @@ layout(binding = 2, std430) readonly buffer ssbo2
 {
 	Triangle triangles[];
 };
-
+layout(binding = 3, std430) readonly buffer ssbo3
+{
+	float accStruct[]; //Short for acceleration structure
+};
 
 //Used to implement recursion
 //Note, is static size and doesn't check size, if program crashes, increase size (or
-struct Stack {
-    int[stackSize] stackPointers;
-    
-    //Add to end of stack
-    void Push(int value)
-    {
-        //First increments the counter, then adds the value
-        stackPointers[++counter] = value;
-    }
-    
-    //Remove from stack
-    int Pop()
-    {
-        //Returns the value, then decrements the value
-        return stackPointers[counter--];
-    }
-};
+const int stackSize = 20; //Used for stack
+int counter = -1; //Used for stack
+int[stackSize] stackPointers;
+
+//Add to end of stack
+void StackPush(int value)
+{
+	//First increments the counter, then adds the value
+	stackPointers[++counter] = value;
+}
+//Remove from stack
+int StackPop()
+{
+	//Returns the value, then decrements the value
+	return stackPointers[counter--];
+}
+//Empty the stack
+void StackClear()
+{
+	counter = -1;
+}
+int StackSize()
+{
+	return counter;
+}
+
+Sphere GetSphere(int primitivePointer)
+{
+    return spheres[primitivePointer];
+}
+Triangle GetTriangle(int primitivePointer)
+{
+	return triangles[primitivePointer-spheres.length()];
+}
 
 //first three values of vec4 form the normal vector, last value is the t value
 vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
@@ -119,12 +137,102 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 		return -1;
 	return t;
 }
+bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, vec3 maxValuesBB)
+{
+	//Initializing variables
+	float tMin = 99999999999f; //Large value
+	float tMax = -99999999999f; //Large negative value
+		
+	vec3 centerTop = vec3(0,0,0);
+	vec3 centerBottom = vec3(0,0,0);
+	vec3 normalTop = vec3(0,0,0);
+	vec3 normalBottom = vec3(0,0,0);
+	
+	for (int i = 0; i < 3; i++) 
+	{
+		if(i == 0)
+		{
+			centerTop = vec3((minValuesBB.x + maxValuesBB.x)/2, maxValuesBB.y, maxValuesBB.z);
+			centerBottom = vec3((minValuesBB.x + maxValuesBB.x)/2, minValuesBB.y, minValuesBB.z);
+			normalTop = vec3(0,1,0);
+			normalBottom = vec3(0, -1, 0);
+		}
+		else if(i == 1)
+		{
+			centerTop = vec3(maxValuesBB.x, (minValuesBB.y + maxValuesBB.y)/2, maxValuesBB.z);
+			centerBottom = vec3(minValuesBB.x, (minValuesBB.y + maxValuesBB.y)/2, minValuesBB.z);
+			normalTop = vec3(0,1,0);
+			normalBottom = vec3(0, -1, 0);
+		}
+		else //i == 2
+		{
+			centerTop = vec3(maxValuesBB.x, maxValuesBB.y, (minValuesBB.z + maxValuesBB.z)/2);
+			centerBottom = vec3(minValuesBB.x, minValuesBB.y, (minValuesBB.z + maxValuesBB.z)/2);
+			normalTop = vec3(0,1,0);
+			normalBottom = vec3(0, -1, 0);
+		}
+
+		//For each axis
+		float t1 = IntersectPlane(rayOrigin, rayDirection, centerTop, normalTop);
+		float t2 = IntersectPlane(rayOrigin, rayDirection, centerBottom, normalBottom);
+
+		if(t1 > t2) //t1 must be smaller than t2, so in this case swap
+		{
+		float tTemp = t1;
+		t1 = t2;
+		t2 = tTemp;
+		}
+		if(tMin > t1) { tMin = t1; } //Min value
+		if(tMax < t2) { tMax = t2; } //Max value
+	}
+		
+	return tMin <= tMax && tMax > 0; //In this case an intersection is found
+}
 bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
 {
-	//Check all spheres in the scene for an intersection
-	for (int i = 0; i < spheres.length(); i++)
+	Sphere spheresInRange[30]; //Assumed maximum
+	int sphereCount = 0;
+	Triangle trianglesInRange[30]; //Assumed maximum
+	int triangleCount = 0;
+	
+	//Start using bounding box
+	StackClear();
+	StackPush(0);
+	int pos = 0; //Position in the acceleration structure
+	while(StackSize() > 0)
 	{
-		Sphere sphere = spheres[i];
+		pos = StackPop();
+		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection, 
+										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]), 
+										vec3(accStruct[pos+3], accStruct[pos+4], accStruct[pos+5]));
+		if(!hit)
+			continue;
+
+		int count = int(accStruct[pos+7]);
+		if(accStruct[pos+6] == 0) //If it is a branch
+		{
+			//Add all branches to check to stack
+			for (int i = 0; i < count; i++) {
+				StackPush(int(accStruct[pos+8+i]));
+			}
+		}
+		else //It is a leaf
+		{
+			for (int i = 0; i < count; i++) {
+				//Add all primitives in it to the list to check
+				int value = int(accStruct[pos+8+i]);
+				if(value >= spheres.length()) //See if it is a sphere or triangle
+				{trianglesInRange[i] = GetTriangle(value); triangleCount++;}
+				else
+				{spheresInRange[i] = GetSphere(value); sphereCount++;}
+			}
+		}
+	}
+		
+	//Check all spheres in the scene for an intersection
+	for (int i = 0; i < sphereCount; i++)
+	{
+		Sphere sphere = spheresInRange[i];
 		//we only care about the w component (the distance) of the result.
 		float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
 		if (result > epsilon && result < distanceToLight)
@@ -143,9 +251,9 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 		}
 	}
 	//Check all triangles in the scene for an intersection
-	for (int i = 0; i < triangles.length(); i++)
+	for (int i = 0; i < triangleCount; i++)
 	{
-		Triangle triangle = triangles[i];
+		Triangle triangle = trianglesInRange[i];
 		float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 		if (result > epsilon && result < distanceToLight)
 		{
