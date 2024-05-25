@@ -85,7 +85,7 @@ void StackClear()
 }
 int StackSize()
 {
-	return counter;
+	return counter+1;
 }
 
 Sphere GetSphere(int primitivePointer)
@@ -139,54 +139,36 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 }
 bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, vec3 maxValuesBB)
 {
-	//Initializing variables
-	float tMin = 99999999999f; //Large value
-	float tMax = -99999999999f; //Large negative value
-		
-	vec3 centerTop = vec3(0,0,0);
-	vec3 centerBottom = vec3(0,0,0);
-	vec3 normalTop = vec3(0,0,0);
-	vec3 normalBottom = vec3(0,0,0);
-	
-	for (int i = 0; i < 3; i++) 
-	{
-		if(i == 0)
-		{
-			centerTop = vec3((minValuesBB.x + maxValuesBB.x)/2, maxValuesBB.y, maxValuesBB.z);
-			centerBottom = vec3((minValuesBB.x + maxValuesBB.x)/2, minValuesBB.y, minValuesBB.z);
-			normalTop = vec3(0,1,0);
-			normalBottom = vec3(0, -1, 0);
-		}
-		else if(i == 1)
-		{
-			centerTop = vec3(maxValuesBB.x, (minValuesBB.y + maxValuesBB.y)/2, maxValuesBB.z);
-			centerBottom = vec3(minValuesBB.x, (minValuesBB.y + maxValuesBB.y)/2, minValuesBB.z);
-			normalTop = vec3(0,1,0);
-			normalBottom = vec3(0, -1, 0);
-		}
-		else //i == 2
-		{
-			centerTop = vec3(maxValuesBB.x, maxValuesBB.y, (minValuesBB.z + maxValuesBB.z)/2);
-			centerBottom = vec3(minValuesBB.x, minValuesBB.y, (minValuesBB.z + maxValuesBB.z)/2);
-			normalTop = vec3(0,1,0);
-			normalBottom = vec3(0, -1, 0);
-		}
+	float tmin, tmax, tymin, tymax, tzmin, tzmax;
+	vec3 rayInverse = 1 / rayDirection;
+	vec3[] bounds = {minValuesBB, maxValuesBB};
+	bool[] raySign = {rayInverse.x < 0, rayInverse.y < 0, rayInverse.z < 0};
 
-		//For each axis
-		float t1 = IntersectPlane(rayOrigin, rayDirection, centerTop, normalTop);
-		float t2 = IntersectPlane(rayOrigin, rayDirection, centerBottom, normalBottom);
+	tmin = (bounds[int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
+	tmax = (bounds[1-int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
+	tymin = (bounds[int(raySign[1])].y - rayOrigin.y) * rayInverse.y;
+	tymax = (bounds[1-int(raySign[1])].y - rayOrigin.y) * rayInverse.y;
 
-		if(t1 > t2) //t1 must be smaller than t2, so in this case swap
-		{
-		float tTemp = t1;
-		t1 = t2;
-		t2 = tTemp;
-		}
-		if(tMin > t1) { tMin = t1; } //Min value
-		if(tMax < t2) { tMax = t2; } //Max value
-	}
-		
-	return tMin <= tMax && tMax > 0; //In this case an intersection is found
+	if ((tmin > tymax) || (tymin > tmax))
+	return false;
+
+	if (tymin > tmin)
+	tmin = tymin;
+	if (tymax < tmax)
+	tmax = tymax;
+
+	tzmin = (bounds[int(raySign[2])].z - rayOrigin.z) * rayInverse.z;
+	tzmax = (bounds[1-int(raySign[2])].z - rayOrigin.z) * rayInverse.z;
+
+	if ((tmin > tzmax) || (tzmin > tmax))
+	return false;
+
+	if (tzmin > tmin)
+	tmin = tzmin;
+	if (tzmax < tmax)
+	tmax = tzmax;
+
+	return true;
 }
 bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
 {
@@ -198,7 +180,7 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 	//Start using bounding box
 	StackClear();
 	StackPush(0);
-	int pos = 0; //Position in the acceleration structure
+	int pos; //Position in the acceleration structure
 	while(StackSize() > 0)
 	{
 		pos = StackPop();
@@ -208,12 +190,13 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 		if(!hit)
 			continue;
 
+		//Get the amount of values stored in the bounding box
 		int count = int(accStruct[pos+7]);
 		if(accStruct[pos+6] == 0) //If it is a branch
 		{
 			//Add all branches to check to stack
 			for (int i = 0; i < count; i++) {
-				StackPush(int(accStruct[pos+8+i]));
+				StackPush(pos + int(accStruct[pos+8+i]));
 			}
 		}
 		else //It is a leaf
