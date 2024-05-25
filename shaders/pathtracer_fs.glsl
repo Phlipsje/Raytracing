@@ -2,12 +2,15 @@
 //settings
 //shadow acne prevention margin
 const float epsilon = 0.001f;
-const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
+const vec3 ambiantLight = vec3(0.05f, 0.05f, 0.05f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
 const int maxBounces = 10;
 
 //this will be squared, so setting this value to 3 will result in 9 samples. This value will make the ray tracer n^2 times slower btw
 const int antiAliasingSamplesRoot = 2;
+
+//which of the AA rays are being traced at the present time
+int currentRay;
 
 out vec4 outputColor;
 //max 50 lights
@@ -16,8 +19,10 @@ uniform float[300] lights;
 uniform int[4] lengths;
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
-//Random numbers from cpu, change each frame
-uniform float[9] randoms;  
+//The time since the program started
+uniform float time;
+//The amount of iterations were spent without moving
+uniform int iterations;  
 
 struct Sphere {
 	vec3 center;
@@ -65,6 +70,34 @@ layout(binding = 3, std430) restrict buffer ssbo3
 	vec4 lastScreen[];
 };
 
+//random number generator(actually encryption algorithm found)
+//after testing seems to be fairly random, with some small patterns appearing after some time, but nothing major
+//setup
+vec2 RandomNumber()
+{
+	uvec2 v = uvec2(gl_FragCoord.xy * (time + currentRay));
+	v.x = abs(v.x); v.y = abs(v.y); uint sum = 0; uint k[4] = { 3355524772, 2738958700, 2911926141, 2123724318 }; uint delta = 2654435769;
+	//32 rounds gave good results
+	for (int i = 0; i < 32; i++)
+	{
+		sum += delta;
+		v.x += ((v.y << 4) + k[0]) & (v.y + sum) & ((v.y >> 5) + k[1]);
+		v.y += ((v.x << 4) + k[2]) & (v.x + sum) & ((v.x >> 5) + k[3]);
+	}
+	//divide by max range of uint to arrive at fractional number between 0 and 1
+	float x = v.x / 4294967295.0f;
+	float y = v.y / 4294967295.0f;
+	return vec2(x, y);
+}
+//alternative function for generating pseudo random numbers, might be good enough, needs testing with pathfinding implementation. 
+//This function is less random and seems to form quite a lot of patterns after some time but it is computationally way cheaper.
+vec2 hash22(vec2 p)
+{
+	vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
+	p3 += dot(p3, p3.yzx+33.33);
+	return fract((p3.xx+p3.yz)*p3.zy);
+
+}
 //first three values of vec4 form the normal vector, last value is the t value
 vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
 {
@@ -105,7 +138,7 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 		return -1;
 	return t;
 }
-bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
+bool ObjectInWayOfLight(in float distanceToLightSquared, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
 {
 	//Check all spheres in the scene for an intersection
 	for (int i = 0; i < spheres.length(); i++)
@@ -113,17 +146,18 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 		Sphere sphere = spheres[i];
 		//we only care about the w component (the distance) of the result.
 		float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
-		if (result > epsilon && result < distanceToLight)
+		if (result > epsilon && result * result < distanceToLightSquared)
 		{
 			return true;
 		}
 	}
 	//Check all planes in the scene for an intersection
+	
 	for (int i = 0; i < planes.length(); i++)
 	{
 		Plane plane = planes[i];
 		float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, plane.position, plane.normal);
-		if (result > epsilon && result < distanceToLight)
+		if (result > epsilon && result * result < distanceToLightSquared)
 		{
 			return true;
 		}
@@ -133,7 +167,7 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 	{
 		Triangle triangle = triangles[i];
 		float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
-		if (result > epsilon && result < distanceToLight)
+		if (result > epsilon && result * result < distanceToLightSquared)
 		{
 			return true;
 		}
@@ -236,15 +270,16 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 			for (int l = 0; l < lengths[3]; l += 6)
 			{
 				vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
-				float distanceToLight = length(lightPos - hitPos);
+				vec3 vectorToLight = lightPos - hitPos;
+				float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
 				vec3 shadowRayOrigin = hitPos;
 				vec3 shadowRayDirection = normalize(lightPos - hitPos);
 				//if no objects were in the way of the light, add the appropriate lighting to it.
-				if (!ObjectInWayOfLight(distanceToLight, shadowRayOrigin, shadowRayDirection))
+				if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
 				{
 					vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
 					//formula for diffuse component, the specular component will be the pure specular component, which is calculated in a different way, as we are sure the current object is pureSpecular
-					combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection));
+					combinedColor += (lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection))) / distanceToLightSquared;
 				}
 			}
 			finalColor += combinedColor * mirrorColorMultiplier;
@@ -294,12 +329,13 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 	for (int l = 0; l < lengths[3]; l += 6)
 	{
 		vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
-		float distanceToLight = length(lightPos - hitPos);
+		vec3 vectorToLight = lightPos - hitPos;
+		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = normalize(lightPos - hitPos);
 
 		//if no objects were in the way of the light, add the appropriate lighting to it.
-		if (!ObjectInWayOfLight(distanceToLight, shadowRayOrigin, shadowRayDirection))
+		if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
 		{
 			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
 			//make sure normal is right way around
@@ -307,7 +343,7 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 				hitNormal = -hitNormal;
 			vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
 			//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
-			combinedColor += 1.0f / (distanceToLight * distanceToLight) * lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity));
+			combinedColor += (lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity))) / distanceToLightSquared;
 		}
 	}
 	//adjust for mirrors
@@ -315,9 +351,16 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 	return finalColor;
 }
 
+//for testing random generators
+void OutputNoise()
+{
+	outputColor = vec4(hash22(time * gl_FragCoord.xy).xxx, 1.0f);
+}
+
 //This code will be run for each pixel on the screen
 void main()
 {
+	//OutputNoise();
 	vec3 sumOfColors = vec3(0.0f, 0.0f, 0.0f);
 	float fraction = 1.0f / antiAliasingSamplesRoot;
 	float halfFraction = fraction / 2.0f;
@@ -325,15 +368,18 @@ void main()
 	{
 		for (int y = 0; y < antiAliasingSamplesRoot; y++)
 		{
+			currentRay = 3*x + y;
 			float planeX = gl_FragCoord.x - 0.5f + halfFraction + x * fraction;
 			float planeY = gl_FragCoord.y - 0.5f + halfFraction + y * fraction;
 			sumOfColors += CalculateColorOfPointOnCameraPlane(planeX, planeY);
 		}
 	}
 	vec3 averageColor = sumOfColors / (antiAliasingSamplesRoot * antiAliasingSamplesRoot);
-	//output result of calculations to the screen
-	averageColor = (lastScreen[int(gl_FragCoord.x) + int(gl_FragCoord.y) * int(camera[12])].xyz + averageColor) / 2.0f;
+	//take last screen into account
+	vec3 oldAverage =lastScreen[int(gl_FragCoord.x) + int(gl_FragCoord.y) * int(camera[12])].xyz;
+	//averageColor = oldAverage * ((iterations - 1) / float(iterations)) + averageColor * (1.0f / iterations);
+	averageColor = oldAverage + (averageColor - oldAverage) / iterations;
+	//output result of calculations to the screen and update the lastScreen
 	lastScreen[int(gl_FragCoord.x) + int(gl_FragCoord.y) * int(camera[12])] = vec4(averageColor, 1.0f);
-	averageColor.x = randoms[0];
 	outputColor = vec4(averageColor, 1.0f);
 }

@@ -10,7 +10,7 @@ namespace INFOGR2024Template.Scenes
         public List<IPrimitive> Primitives { get; set; }
         public Camera Camera {  get; set; }
         public List<PointLight> PointLights { get; set; }
-
+        
         public TestScene1()
         {
             Vector3 offset = new Vector3(10, 0, 0);

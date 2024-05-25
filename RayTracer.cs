@@ -20,7 +20,7 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_camera, uniform_ligths, uniform_lengths, uniform_randoms;
+        int uniform_camera, uniform_ligths, uniform_lengths, uniform_time, uniform_iterations;
         int ssbo_spheres, ssbo_planes, ssbo_triangles;
         float[] cameraData, lightsData;
         SphereStruct[] spheresData;
@@ -31,15 +31,19 @@ namespace OpenTK
         private IScene scene;
         private ViewAxis viewAxis = ViewAxis.Topdown;
 
-        private Random random = new Random();
+        private Stopwatch stopwatch = new Stopwatch();
+        private float time;
+        private int pathFindingIterations = 0;
+        
         // constructor
         public RayTracer()
         {
-            scene = new TestScene1();
+            scene = new PathtracingScene();
         }
         // initialize
         public void Init()
         {
+            stopwatch.Start();
             ScreenHelper.Resize(1280, 720);
 
             //these lines together with the similar one in RenderGL somehow fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
@@ -78,7 +82,8 @@ namespace OpenTK
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
-            uniform_randoms = GL.GetUniformLocation(programID, "randoms");
+            uniform_time = GL.GetUniformLocation(programID, "time");
+            uniform_iterations = GL.GetUniformLocation(programID, "iterations");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
             Debug.WriteLine("ligthsLoc: " + uniform_ligths);
@@ -104,7 +109,8 @@ namespace OpenTK
             ScreenHelper.Clear();
             scene.Tick();
             HandleInput();
-
+            time += (float)stopwatch.Elapsed.TotalSeconds;
+            pathFindingIterations++;
             if (InputHelper.keyBoard.IsKeyPressed(Keys.F1))
             {
                 CameraMode = CameraMode.OpenGL;
@@ -1020,12 +1026,8 @@ namespace OpenTK
                 ScreenHelper.screen.width, ScreenHelper.screen.height
             };
             GL.Uniform1(uniform_camera, cameraData.Length, cameraData);
-            float[] randomData = new float[9];
-            for (int i = 0; i < randomData.Length; i++)
-            {
-                randomData[i] = random.NextSingle();
-            }
-            GL.Uniform1(uniform_randoms, randomData.Length, randomData);
+            GL.Uniform1(uniform_iterations, pathFindingIterations);
+            GL.Uniform1(uniform_time, time);
         }
         private void SendPrimitivesToShader()
         {
@@ -1152,6 +1154,8 @@ namespace OpenTK
         #endregion
         void HandleInput()
         {
+            Vector3 oldTopLeftPlane = camera.TopLeftCameraPlane;
+            Vector3 oldBottomRightPlane = camera.BottomRightCameraPlane;
             float minimumPlaneDistance = 0.05f;
             float delta = 1 / 60f;
             float speed = 3f;
@@ -1210,6 +1214,12 @@ namespace OpenTK
                 moveDirection -= new Vector3(0, 1, 0);
             if (moveDirection != Vector3.Zero)
                 camera.Position += moveDirection.Normalized() * speed * delta;
+            
+            //reset pathfindingIterations if camera view changed
+            if (oldTopLeftPlane != camera.TopLeftCameraPlane && oldBottomRightPlane != camera.BottomRightCameraPlane)
+            {
+                pathFindingIterations = 0;
+            }
 
             //switching rendering
             if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D4))
@@ -1225,5 +1235,16 @@ namespace OpenTK
         Debug3D,
         Raytracing,
         OpenGL
+    }
+    struct PathFindingData
+    {
+        float time;
+        int iterations;
+
+        public PathFindingData(float time, int iterations)
+        {
+            this.time = time;
+            this.iterations = iterations;
+        }
     }
 }
