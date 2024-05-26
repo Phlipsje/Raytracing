@@ -15,9 +15,9 @@ public class RTree
     private TreeNode rootNode { get; }
     private List<Sphere> spherePrimitives => scene.SpherePrimitives;
     private List<Triangle> trianglePrimitives => scene.TrianglePrimitives;
-    private int maximumChildNodes { get; } = 10; //Maximum amount of child nodes stored inside of 1 node
+    private int maximumChildNodes { get; } = 7; //Maximum amount of child nodes stored inside of 1 node
 
-    private int maximumValuesPerNode { get; } = 7; //Maximum amount of values that can be stored in 1 node before it overflows
+    private int maximumValuesPerNode { get; } = 10; //Maximum amount of values that can be stored in 1 node before it overflows
     //This holds the method to turn the treeNodes into a single array to pass as a buffer to OpenGL
 
     public RTree(IScene scene)
@@ -194,7 +194,7 @@ public class RTree
                 //If it is already fully in a boundingBox, add it to there
                 foreach (TreeNode treeNode in children)
                 {
-                    if (boundingBox.FullyContains(boundingBoxOfPrimitive))
+                    if (treeNode.boundingBox.FullyContains(boundingBoxOfPrimitive))
                     {
                         treeNode.AddElement(primitivePointer);
                         UpdateBoundingBox();
@@ -203,73 +203,32 @@ public class RTree
                 }
                 
                 //Otherwise
-                //Make a new list and remove all that would overlap or exceed max size by adding the new primitive
-                //Get the smallest increment from the trimmed list
-                //If the trimmed list is empty add to something else
-
-                List<int> childrenToIgnore = new List<int>();
-                for (int i = 0; i < children.Length; i++)
-                {
-                    //Ignore boundingBoxes that would get a too large size
-                    float value = children[i].boundingBox.CalculatePotentialBoundingBoxSize(boundingBoxOfPrimitive);
-                    if (value > boundingBox.GetSize() / (maximumChildNodes * 0.75f)) //0.75f is heuristic
-                    {
-                        childrenToIgnore.Add(i);
-                        continue; //Already added, so don't need to check further
-                    }
- 
-                    //Check if the boundingBox would overlap with another if the primitive was added
-                    BoundingBox tempBox = children[i].boundingBox.CalculatePotentialBoundingBox(boundingBoxOfPrimitive);
-                    for (int j = 0; j < children.Length; j++)
-                    {
-                        if (i == j)
-                            continue;
-
-                        if (tempBox.Overlap(children[j].boundingBox))
-                        {
-                            childrenToIgnore.Add(i);
-                        }
-                    }
-                }
-                
+                //Go through every possible assignment and get the one that has the lowest score
+                //Scoring is based on what is a bad combination, with weights for extremity
                 int index = -1;
+                float overlapWeight = 8f;
+                float sizeWeight = 2f;
+                float growthWeight = 10f;
+                float lowestScore = 9999999999999f; //Very high number
+                float tempScore;
+                float tempSize;
+                
+                int count = 0;
+                foreach (TreeNode treeNode in children)
+                {
+                    tempScore = 0;
+                    tempScore += treeNode.boundingBox.OverlapSize(boundingBoxOfPrimitive) * overlapWeight;
+                    tempSize = treeNode.boundingBox.CalculatePotentialBoundingBoxSize(boundingBoxOfPrimitive);
+                    tempScore += tempSize * sizeWeight;
+                    tempScore += (tempSize - treeNode.boundingBox.GetSize()) * growthWeight;
 
-                //If we don't need to ignore every child
-                if (childrenToIgnore.Count < children.Length)
-                {
-                    //Choose the bounding box that will grow the least in size
-                    float smallestSize = float.MaxValue;
-                    
-                    for (int i = 0; i < children.Length; i++)
+                    if (tempScore < lowestScore)
                     {
-                        //Don't count the ones that should be ignored
-                        if (childrenToIgnore.Contains(i))
-                            continue;
-                        
-                        //NOTE empty bounding boxes have negative size, so clamp to 0
-                        float value = children[i].boundingBox.CalculatePotentialBoundingBoxSize(boundingBoxOfPrimitive) - MathF.Max(0, children[i].boundingBox.GetSize());
-                        if (value < smallestSize)
-                        {
-                            smallestSize = value;
-                            index = i;
-                        }
+                        index = count;
+                        lowestScore = tempScore;
                     }
-                }
-                else //Just check with everything, because everything is a bad choice
-                {
-                    //Choose the bounding box that will grow the least in size
-                    float smallestSize = float.MaxValue;
-                    
-                    for (int i = 0; i < children.Length; i++)
-                    {
-                        //NOTE empty bounding boxes have negative size, so clamp to 0
-                        float value = children[i].boundingBox.CalculatePotentialBoundingBoxSize(boundingBoxOfPrimitive) - MathF.Max(0, children[i].boundingBox.GetSize());
-                        if (value < smallestSize)
-                        {
-                            smallestSize = value;
-                            index = i;
-                        }
-                    }
+
+                    count++;
                 }
                 
                 //Add the element
@@ -291,7 +250,7 @@ public class RTree
                 children[i].parent = this;
             }
             
-            //Place 2 furthest nodes together
+            //Place 2 furthest nodes in separate sections
             int index0 = -1;
             int index1 = -1;
             float distance = 0;

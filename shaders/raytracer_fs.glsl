@@ -4,7 +4,7 @@
 const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
-const int maxBounces = 3;
+const int maxBounces = 10;
 
 out vec4 outputColor;
 //max 50 lights

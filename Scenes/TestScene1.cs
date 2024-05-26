@@ -42,11 +42,11 @@ namespace INFOGR2024Template.Scenes
             PointLights = new List<PointLight>
             {
                 new PointLight(new Vector3(-5f, 10f, 0f), new Color4(70, 70, 70, 1.0f)),
-                //new PointLight(new Vector3(0f, 3f, 0f), new Color4(0, 4, 4, 1.0f)),
-                //new PointLight(new Vector3(0.5f, 2.5f, -3f), new Color4(3f, 0, 6, 1.0f)),
-                //new PointLight(new Vector3(8f, 5f, 2f), new Color4(10f, 5f, 0f, 1.0f)),
-                //new PointLight(new Vector3(5f, 10f, 5f), new Color4(30, 30, 30, 1.0f)),
-                //new PointLight(new Vector3(30f, 20f, 0f), new Color4(300, 300, 300, 1f))
+                new PointLight(new Vector3(0f, 3f, 0f), new Color4(0, 4, 4, 1.0f)),
+                new PointLight(new Vector3(0.5f, 2.5f, -3f), new Color4(3f, 0, 6, 1.0f)),
+                new PointLight(new Vector3(8f, 5f, 2f), new Color4(10f, 5f, 0f, 1.0f)),
+                new PointLight(new Vector3(5f, 10f, 5f), new Color4(30, 30, 30, 1.0f)),
+                new PointLight(new Vector3(30f, 20f, 0f), new Color4(300, 300, 300, 1f))
             };
             
             //This makes sure we used location based searching of intersections
