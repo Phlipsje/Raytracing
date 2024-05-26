@@ -15,12 +15,18 @@ const float pi = 3.1415927;
 const int antiAliasingSamplesRoot = 3;
 const int pathTracingBounces = 2;
 
-//which of the AA rays are being traced at the present time
+//Value increments so you get a different random number each time you pull one within the same frame
 int randomsUsed = 0;
 
 out vec4 outputColor;
 //max 50 lights
 uniform float[300] lights;
+//max 50 triangleLights;
+uniform int[50] triangleLightPointers;
+//max 50 sphereLights;
+uniform int[50] sphereLightPointers;
+//max 50 planeLights
+uniform int[50] planeLightPointers;
 //the lengths of each of the primitive arrays, in same order as they are declared
 uniform int[4] lengths;
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
@@ -37,6 +43,7 @@ struct Sphere {
 	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
+	vec3 emissionColor;
 };
 struct Plane {
 	vec3 position;
@@ -45,6 +52,7 @@ struct Plane {
 	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
+	vec3 emissionColor;
 };
 struct Triangle {
 	vec3 pointA;
@@ -55,6 +63,7 @@ struct Triangle {
 	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
+	vec3 emissionColor;
 };
 //SSBO for sphere primitives
 layout(binding = 0, std430) readonly buffer ssbo0
@@ -206,7 +215,7 @@ bool ObjectInWayOfLight(in float distanceToLightSquared, in vec3 shadowRayOrigin
 	}	
 	return false;
 }
-void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal)
+void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal, inout vec3 hitEmissionColor)
 {
 	//intersect with all spheres:
 	for (int i = 0; i < spheres.length(); i++)
@@ -222,6 +231,7 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitPureSpecular = sphere.isPureSpecular;
 			hitSpecularColor = sphere.specularColor;
 			hitSpecularity = sphere.specularity;
+			hitEmissionColor = sphere.emissionColor;
 			//result.xyz is the normal the IntersectSphere call returned
 			hitNormal = result.xyz;
 		}
@@ -238,6 +248,7 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitPureSpecular = plane.isPureSpecular;
 			hitSpecularColor = plane.specularColor;
 			hitSpecularity = plane.specularity;
+			hitEmissionColor = plane.emissionColor;
 			hitNormal = plane.normal;
 		}
 	}
@@ -253,6 +264,7 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitPureSpecular = triangle.isPureSpecular;
 			hitSpecularColor = triangle.specularColor;
 			hitSpecularity = triangle.specularity;
+			hitEmissionColor = triangle.emissionColor;
 			hitNormal = triangle.normal;
 		}
 	}
@@ -265,13 +277,13 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 	vec3 hitColor = vec3(0, 0, 0);
 	bool hitPureSpecular = false;
 	vec3 hitSpecularColor = vec3(0, 0, 0);
-	//!!dont remember if this should be 1, probably should be 0, NEED TO TEST!!
 	float hitSpecularity = 1.0f;
+	vec3 hitEmissionColor = vec3(0, 0, 0);
 	//we also need to save the normal for the shading calculations later.
 	vec3 hitNormal = vec3(0, 0, 0);
 
 	//Find the closest intersection with all the objects in the scene
-	FindClosestIntersection(rayOrigin, rayDirection, minDistance, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal);
+	FindClosestIntersection(rayOrigin, rayDirection, minDistance, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal, hitEmissionColor);
 
 	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL
 	//value that the final color will be multiplied with, instantiated to be just 1, 1, 1 so it has no effect if no mirrors are used.
@@ -325,7 +337,7 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 		hitNormal = vec3(0, 0, 0);
 
 		//calculate new intersection
-		FindClosestIntersection(rayOrigin, rayDirection, epsilon, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal);
+		FindClosestIntersection(rayOrigin, rayDirection, epsilon, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal, hitEmissionColor);
 		bounces++;
 	}
 	//if nothing got hit, return the color of the sky, t only changes if any of the primitives got hit by the viewray and t was instantiated to be float.maxValue
@@ -345,7 +357,7 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 	//determine location/position of the intersection
 	vec3 hitPos = rayOrigin + t * rayDirection;
 	//combinedColor is the color the pixel will eventually be, each component can be added seperately and the ambient lighting will always be applied so it can happen now.
-	vec3 combinedColor = vec3(hitColor * ambiantLight);
+	vec3 combinedColor = vec3(hitColor * ambiantLight + hitEmissionColor);
 	//Calculate the lighting on the found intersection for each light in the scene:
 	for (int l = 0; l < lengths[3]; l += 6)
 	{
@@ -406,7 +418,7 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
 		vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
 		//formula for diffuse and specular components
-		combinedColor += 5f * (lightColor * (surfaceDiffuse * max(0, dot(hitNormal, shadowRayDirection)) + surfaceSpecular * pow(max(0, dot(rayDirection, vectorR)), surfaceSpecularity))) / max(1.3f, distanceToLightSquared);
+		combinedColor += 5.0f * (lightColor * (surfaceDiffuse * max(0, dot(hitNormal, shadowRayDirection)) + surfaceSpecular * pow(max(0, dot(rayDirection, vectorR)), surfaceSpecularity))) / max(1.3f, distanceToLightSquared);
 	}
 	return combinedColor;
 }
