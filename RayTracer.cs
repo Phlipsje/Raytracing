@@ -238,8 +238,8 @@ namespace OpenTK
             //Draw a few camera rays
             Vector2 rayStartingPoint = new Vector2(camera.Position.X, camera.Position.Z);
             Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
-            Vector2 leftSideCameraPlane = new Vector2(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Z);
-            Vector2 rightSideCameraPlane = new Vector2(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Z);
+            Vector2 leftSideCameraPlane = new Vector2((camera.TopLeftCameraPlane.X + camera.BottomLeftCameraPlane.X)/2, (camera.TopLeftCameraPlane.Z + camera.BottomLeftCameraPlane.Z)/2);
+            Vector2 rightSideCameraPlane = new Vector2((camera.TopRightCameraPlane.X + camera.BottomRightCameraPlane.X)/2, (camera.TopRightCameraPlane.Z + camera.BottomRightCameraPlane.Z)/2);
             Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
             for (int i = 0; i < exampleRayCount; i++)
             {
@@ -334,11 +334,18 @@ namespace OpenTK
             Vector2i pixelPositionCamera = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos));
 
             //Draw camera plane
-            Vector2 leftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Z);
-            Vector2 rightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Z);
-            Vector2i pixelPosLeftEdge = ScreenHelper.Vector2ToPixel(leftEdgeCameraPlane);
-            Vector2i pixelPosRightEdge = ScreenHelper.Vector2ToPixel(rightEdgeCameraPlane);
-            ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
+            Vector2 topLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Z);
+            Vector2 topRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Z);
+            Vector2 bottomLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Z);
+            Vector2 bottomRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Z);
+            Vector2i pixelPositionBottomLeftEdge = ScreenHelper.Vector2ToPixel(bottomLeftEdgeCameraPlane);
+            Vector2i pixelPosBottomRightEdge = ScreenHelper.Vector2ToPixel(bottomRightEdgeCameraPlane);
+            Vector2i pixelPosTopLeftEdge = ScreenHelper.Vector2ToPixel(topLeftEdgeCameraPlane);
+            Vector2i pixelPosTopRightEdge = ScreenHelper.Vector2ToPixel(topRightEdgeCameraPlane);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosBottomRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosTopLeftEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopLeftEdge, pixelPosTopRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopRightEdge, pixelPosBottomRightEdge, Color4.White);
             
             //Draw camera angles
             Vector2 viewDirection = new Vector2(camera.ViewDirection.X, camera.ViewDirection.Z).Normalized();
@@ -486,8 +493,8 @@ namespace OpenTK
             //Draw a few camera rays
             Vector2 rayStartingPoint = new Vector2(camera.Position.Z, camera.Position.Y);
             Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
-            Vector2 leftSideCameraPlane = new Vector2(camera.BottomLeftCameraPlane.Z, camera.BottomLeftCameraPlane.Y);
-            Vector2 rightSideCameraPlane = new Vector2(camera.TopLeftCameraPlane.Z, camera.TopLeftCameraPlane.Y);
+            Vector2 leftSideCameraPlane = new Vector2((camera.TopLeftCameraPlane.Z + camera.BottomLeftCameraPlane.Z)/2, (camera.TopLeftCameraPlane.Y + camera.BottomLeftCameraPlane.Y)/2);
+            Vector2 rightSideCameraPlane = new Vector2((camera.TopRightCameraPlane.Z + camera.BottomRightCameraPlane.Z)/2, (camera.TopRightCameraPlane.Y + camera.BottomRightCameraPlane.Y)/2);
             Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
             for (int i = 0; i < exampleRayCount; i++)
             {
@@ -582,11 +589,18 @@ namespace OpenTK
             Vector2i pixelPositionCamera = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos));
 
             //Draw camera plane
-            Vector2 leftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.Z, camera.BottomLeftCameraPlane.Y);
-            Vector2 rightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.Z, camera.TopLeftCameraPlane.Y);
-            Vector2i pixelPosLeftEdge = ScreenHelper.Vector2ToPixel(leftEdgeCameraPlane);
-            Vector2i pixelPosRightEdge = ScreenHelper.Vector2ToPixel(rightEdgeCameraPlane);
-            ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
+            Vector2 topLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.Z, camera.TopLeftCameraPlane.Y);
+            Vector2 topRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.Z, camera.TopRightCameraPlane.Y);
+            Vector2 bottomLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.Z, camera.BottomLeftCameraPlane.Y);
+            Vector2 bottomRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.Z, camera.BottomRightCameraPlane.Y);
+            Vector2i pixelPositionBottomLeftEdge = ScreenHelper.Vector2ToPixel(bottomLeftEdgeCameraPlane);
+            Vector2i pixelPosBottomRightEdge = ScreenHelper.Vector2ToPixel(bottomRightEdgeCameraPlane);
+            Vector2i pixelPosTopLeftEdge = ScreenHelper.Vector2ToPixel(topLeftEdgeCameraPlane);
+            Vector2i pixelPosTopRightEdge = ScreenHelper.Vector2ToPixel(topRightEdgeCameraPlane);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosBottomRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosTopLeftEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopLeftEdge, pixelPosTopRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopRightEdge, pixelPosBottomRightEdge, Color4.White);
             
             //Draw camera angles
             Vector2 viewDirection = new Vector2(camera.ViewDirection.Z, camera.ViewDirection.Y).Normalized();
@@ -734,8 +748,8 @@ namespace OpenTK
             //Draw a few camera rays
             Vector2 rayStartingPoint = new Vector2(camera.Position.X, camera.Position.Y);
             Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
-            Vector2 leftSideCameraPlane = new Vector2(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Y);
-            Vector2 rightSideCameraPlane = new Vector2(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Y);
+            Vector2 leftSideCameraPlane = new Vector2((camera.TopLeftCameraPlane.X + camera.BottomLeftCameraPlane.X)/2, (camera.TopLeftCameraPlane.Y + camera.BottomLeftCameraPlane.Y)/2);
+            Vector2 rightSideCameraPlane = new Vector2((camera.TopRightCameraPlane.X + camera.BottomRightCameraPlane.X)/2, (camera.TopRightCameraPlane.Y + camera.BottomRightCameraPlane.Y)/2);
             Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
             for (int i = 0; i < exampleRayCount; i++)
             {
@@ -830,11 +844,18 @@ namespace OpenTK
             Vector2i pixelPositionCamera = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos));
 
             //Draw camera plane
-            Vector2 leftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Y);
-            Vector2 rightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Y);
-            Vector2i pixelPosLeftEdge = ScreenHelper.Vector2ToPixel(leftEdgeCameraPlane);
-            Vector2i pixelPosRightEdge = ScreenHelper.Vector2ToPixel(rightEdgeCameraPlane);
-            ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
+            Vector2 topLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Y);
+            Vector2 topRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Y);
+            Vector2 bottomLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Y);
+            Vector2 bottomRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Y);
+            Vector2i pixelPositionBottomLeftEdge = ScreenHelper.Vector2ToPixel(bottomLeftEdgeCameraPlane);
+            Vector2i pixelPosBottomRightEdge = ScreenHelper.Vector2ToPixel(bottomRightEdgeCameraPlane);
+            Vector2i pixelPosTopLeftEdge = ScreenHelper.Vector2ToPixel(topLeftEdgeCameraPlane);
+            Vector2i pixelPosTopRightEdge = ScreenHelper.Vector2ToPixel(topRightEdgeCameraPlane);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosBottomRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosTopLeftEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopLeftEdge, pixelPosTopRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopRightEdge, pixelPosBottomRightEdge, Color4.White);
             
             //Draw camera angles
             Vector2 viewDirection = new Vector2(camera.ViewDirection.X, camera.ViewDirection.Y).Normalized();
