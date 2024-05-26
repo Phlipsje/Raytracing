@@ -4,7 +4,7 @@
 const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
-const int maxBounces = 10;
+const int maxBounces = 3;
 
 out vec4 outputColor;
 //max 50 lights
@@ -62,7 +62,7 @@ layout(binding = 3, std430) readonly buffer ssbo3
 
 //Used to implement recursion
 //Note, is static size and doesn't check size, if program crashes, increase size
-const int stackSize = 20; //Used for stack
+const int stackSize = 100; //Used for stack
 int counter = -1; //Used for stack
 int[stackSize] stackPointers;
 
@@ -157,24 +157,14 @@ bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, v
 	return true;
 }
 //Gets the primitives that are useful for the calculation by means of an acceleration structure
-void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[20] spherePointers, out int triangleCount, out int[20] trianglePointers)
+void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[500] trianglePointers)
 {
 	//Start using bounding box
 	StackClear();
 	StackPush(0);
 	int pos; //Position in the acceleration structure
-	int debugCount = 0;
 	while(StackSize() > 0)
 	{
-		debugCount++;
-		
-		//if(debugCount > 50)
-		//{
-		//	sphereCount = 0;
-		//	triangleCount = 0;
-		//	return;
-		//}
-		
 		pos = StackPop();
 		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection,
 										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]),

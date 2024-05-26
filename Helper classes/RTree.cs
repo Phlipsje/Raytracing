@@ -217,7 +217,7 @@ public class RTree
                         childrenToIgnore.Add(i);
                         continue; //Already added, so don't need to check further
                     }
-
+ 
                     //Check if the boundingBox would overlap with another if the primitive was added
                     BoundingBox tempBox = children[i].boundingBox.CalculatePotentialBoundingBox(boundingBoxOfPrimitive);
                     for (int j = 0; j < children.Length; j++)
@@ -343,6 +343,8 @@ public class RTree
 
                 if (parent != null)
                 {
+                    //Reinsert via parent, because then the order in which all objects are added has less of an effect,
+                    //this eventually leads to less overlap and better results
                     if(pointersCopy[i] != -1)
                         parent.AddElement(pointersCopy[i]);
                 }

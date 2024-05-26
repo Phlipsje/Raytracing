@@ -38,16 +38,15 @@ namespace INFOGR2024Template.Scenes
             TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Gold, Color4.Gold, true, 1f))).ToList();
             TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Black, new Color4(50, 50, 255, 255), true, 1f))).ToList();
             TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise, Color4.White, false, 1f))).ToList();
-            //TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, false, 0.01f))).ToList();
-            float lampExtraDistance = 10f;
+            TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, false, 0.01f))).ToList();
             PointLights = new List<PointLight>
             {
                 new PointLight(new Vector3(-5f, 10f, 0f), new Color4(70, 70, 70, 1.0f)),
-                new PointLight(new Vector3(0f, 3f, 0f), new Color4(0, 4, 4, 1.0f)),
-                new PointLight(new Vector3(0.5f, 2.5f, -3f), new Color4(3f, 0, 6, 1.0f)),
-                new PointLight(new Vector3(8f, 5f, 2f), new Color4(10f, 5f, 0f, 1.0f)),
-                new PointLight(new Vector3(5f, 10f, 5f), new Color4(30, 30, 30, 1.0f)),
-                new PointLight(new Vector3(30f, 20f, 0f), new Color4(300, 300, 300, 1f))
+                //new PointLight(new Vector3(0f, 3f, 0f), new Color4(0, 4, 4, 1.0f)),
+                //new PointLight(new Vector3(0.5f, 2.5f, -3f), new Color4(3f, 0, 6, 1.0f)),
+                //new PointLight(new Vector3(8f, 5f, 2f), new Color4(10f, 5f, 0f, 1.0f)),
+                //new PointLight(new Vector3(5f, 10f, 5f), new Color4(30, 30, 30, 1.0f)),
+                //new PointLight(new Vector3(30f, 20f, 0f), new Color4(300, 300, 300, 1f))
             };
             
             //This makes sure we used location based searching of intersections

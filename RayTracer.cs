@@ -7,9 +7,6 @@ using OpenTK.SceneElements;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
-using System;
-using System.Drawing;
-using INFOGR2024Template.SceneElements;
 using System.Runtime.InteropServices;
 
 namespace OpenTK
@@ -30,6 +27,7 @@ namespace OpenTK
         private Camera camera => scene.Camera;
         private IScene scene;
         private ViewAxis viewAxis = ViewAxis.Topdown;
+        Stopwatch timer = new Stopwatch();
         // constructor
         public RayTracer()
         {
@@ -98,6 +96,13 @@ namespace OpenTK
         // tick: renders one frame
         public void Tick()
         {
+            //Stopwatch stops first and then starts, because otherwise it doesn't take into account the time that the GPU uses
+            timer.Stop();
+            Console.WriteLine(timer.ElapsedMilliseconds);
+            timer.Reset();
+            
+            timer.Start();
+            
             ScreenHelper.Clear();
             scene.Tick();
             HandleInput();
