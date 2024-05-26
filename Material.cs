@@ -16,7 +16,7 @@ namespace INFOGR2024Template
         float specularWidth;
         public Color4 DiffuseColor { get; set; } //The color of a Material.
         public Color4 SpecularColor { get; set; } //The specular color of the material
-        public Color4 EmissionColor { get; set; } //The emission color, the values determime the intensity as well
+        public Color4 EmissionColor { get; set; } //The emission color, the values determine the intensity as well
         public bool IsPureSpecular { get; set; } //Whether the object acts like a mirror
         public float SpecularWidth  //the specularity or glossiness of a material
         {

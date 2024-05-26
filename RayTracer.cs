@@ -34,7 +34,6 @@ namespace OpenTK
         private Stopwatch stopwatch = new Stopwatch();
         private float time;
         private int pathFindingIterations = 0;
-        
         // constructor
         public RayTracer()
         {
