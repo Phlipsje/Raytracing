@@ -1125,7 +1125,7 @@ namespace OpenTK
             //not sure about the order of last two lines
             GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 3, ssbo_accelerationStructure);
             //not sure about the buffer usage hint here
-            GL.BufferData(BufferTarget.ShaderStorageBuffer, scene.AccelerationStructureData.Length, scene.AccelerationStructureData, BufferUsageHint.StaticRead);
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, scene.AccelerationStructureData.Length*4, scene.AccelerationStructureData, BufferUsageHint.StaticRead);
         }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {

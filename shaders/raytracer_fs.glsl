@@ -170,13 +170,9 @@ bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, v
 
 	return true;
 }
-bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
+//Gets the primitives that are useful for the calculation by means of an acceleration structure
+void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[120] spherePointers, out int triangleCount, out int[120] trianglePointers)
 {
-	Sphere spheresInRange[30]; //Assumed maximum
-	int sphereCount = 0;
-	Triangle trianglesInRange[30]; //Assumed maximum
-	int triangleCount = 0;
-	
 	//Start using bounding box
 	StackClear();
 	StackPush(0);
@@ -184,11 +180,11 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 	while(StackSize() > 0)
 	{
 		pos = StackPop();
-		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection, 
-										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]), 
+		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection,
+										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]),
 										vec3(accStruct[pos+3], accStruct[pos+4], accStruct[pos+5]));
 		if(!hit)
-			continue;
+		continue;
 
 		//Get the amount of values stored in the bounding box
 		int count = int(accStruct[pos+7]);
@@ -205,17 +201,25 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 				//Add all primitives in it to the list to check
 				int value = int(accStruct[pos+8+i]);
 				if(value >= spheres.length()) //See if it is a sphere or triangle
-				{trianglesInRange[i] = GetTriangle(value); triangleCount++;}
+				{trianglePointers[i] = value - spheres.length(); triangleCount++;}
 				else
-				{spheresInRange[i] = GetSphere(value); sphereCount++;}
+				{spherePointers[i] = value; sphereCount++;}
 			}
 		}
 	}
+}
+bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
+{
+	int sphereCount;
+	int[] spherePointers;
+	int triangleCount;
+	int[] trianglePointers;
+	GetRelevantPrimitives(shadowRayOrigin, shadowRayDirection, sphereCount, spherePointers, triangleCount, trianglePointers);
 		
 	//Check all spheres in the scene for an intersection
 	for (int i = 0; i < sphereCount; i++)
 	{
-		Sphere sphere = spheresInRange[i];
+		Sphere sphere = spheres[spherePointers[i]];
 		//we only care about the w component (the distance) of the result.
 		float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
 		if (result > epsilon && result < distanceToLight)
@@ -236,7 +240,7 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 	//Check all triangles in the scene for an intersection
 	for (int i = 0; i < triangleCount; i++)
 	{
-		Triangle triangle = trianglesInRange[i];
+		Triangle triangle = triangles[trianglePointers[i]];
 		float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 		if (result > epsilon && result < distanceToLight)
 		{
@@ -247,11 +251,17 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 }
 void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal)
 {
+	int sphereCount;
+	int[] spherePointers;
+	int triangleCount;
+	int[] trianglePointers;
+	GetRelevantPrimitives(rayOrigin, rayDirection, sphereCount, spherePointers, triangleCount, trianglePointers);
+	
 	//intersect with all spheres:
-	for (int i = 0; i < spheres.length(); i++)
+	for (int i = 0; i < sphereCount; i++)
 	{
 		//sphere is the current sphere being looked at
-		Sphere sphere = spheres[i];
+		Sphere sphere = spheres[spherePointers[i]];
 		vec4 result = IntersectSphere(rayOrigin, rayDirection, sphere.center, sphere.radius);
 		if (result.w > minDistance && result.w < t)
 		{
@@ -281,9 +291,9 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 		}
 	}
 	//intersect with all triangles
-	for (int i = 0; i < triangles.length(); i++)
+	for (int i = 0; i < triangleCount; i++)
 	{
-		Triangle triangle = triangles[i];
+		Triangle triangle = triangles[trianglePointers[i]];
 		float result = IntersectTriangle(rayOrigin, rayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 		if (result > minDistance && result < t)
 		{

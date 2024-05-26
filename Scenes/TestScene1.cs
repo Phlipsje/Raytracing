@@ -37,7 +37,7 @@ namespace INFOGR2024Template.Scenes
             TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Gold, Color4.Gold, true, 1f))).ToList();
             TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Black, new Color4(50, 50, 255, 255), true, 1f))).ToList();
             TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise, Color4.White, false, 1f))).ToList();
-            //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, 0.01f))).ToList();
+            TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, false, 0.01f))).ToList();
             float lampExtraDistance = 10f;
             PointLights = new List<PointLight>
             {

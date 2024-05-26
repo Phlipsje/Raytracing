@@ -15,9 +15,9 @@ public class RTree
     private TreeNode rootNode { get; }
     private List<Sphere> spherePrimitives => scene.SpherePrimitives;
     private List<Triangle> trianglePrimitives => scene.TrianglePrimitives;
-    private int maximumChildNodes { get; } = 4; //Maximum amount of child nodes stored inside of 1 node
+    private int maximumChildNodes { get; } = 10; //Maximum amount of child nodes stored inside of 1 node
 
-    private int maximumValuesPerNode { get; } = 3; //Maximum amount of values that can be stored in 1 node before it overflows
+    private int maximumValuesPerNode { get; } = 7; //Maximum amount of values that can be stored in 1 node before it overflows
     //This holds the method to turn the treeNodes into a single array to pass as a buffer to OpenGL
 
     public RTree(IScene scene)
