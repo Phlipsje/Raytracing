@@ -61,7 +61,7 @@ layout(binding = 3, std430) readonly buffer ssbo3
 };
 
 //Used to implement recursion
-//Note, is static size and doesn't check size, if program crashes, increase size (or
+//Note, is static size and doesn't check size, if program crashes, increase size
 const int stackSize = 20; //Used for stack
 int counter = -1; //Used for stack
 int[stackSize] stackPointers;
@@ -86,15 +86,6 @@ void StackClear()
 int StackSize()
 {
 	return counter+1;
-}
-
-Sphere GetSphere(int primitivePointer)
-{
-    return spheres[primitivePointer];
-}
-Triangle GetTriangle(int primitivePointer)
-{
-	return triangles[primitivePointer-spheres.length()];
 }
 
 //first three values of vec4 form the normal vector, last value is the t value
@@ -139,52 +130,57 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 }
 bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, vec3 maxValuesBB)
 {
-	float tmin, tmax, tymin, tymax, tzmin, tzmax;
+	float txmin, txmax, tymin, tymax, tzmin, tzmax;
 	vec3 rayInverse = 1 / rayDirection;
 	vec3[] bounds = {minValuesBB, maxValuesBB};
 	bool[] raySign = {rayInverse.x < 0, rayInverse.y < 0, rayInverse.z < 0};
 
-	tmin = (bounds[int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
-	tmax = (bounds[1-int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
+	txmin = (bounds[int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
+	txmax = (bounds[1-int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
 	tymin = (bounds[int(raySign[1])].y - rayOrigin.y) * rayInverse.y;
 	tymax = (bounds[1-int(raySign[1])].y - rayOrigin.y) * rayInverse.y;
 
-	if ((tmin > tymax) || (tymin > tmax))
+	if ((txmin > tymax) || (tymin > txmax))
 	return false;
 
-	if (tymin > tmin)
-	tmin = tymin;
-	if (tymax < tmax)
-	tmax = tymax;
+	if (tymin > txmin)
+	txmin = tymin;
+	if (tymax < txmax)
+	txmax = tymax;
 
 	tzmin = (bounds[int(raySign[2])].z - rayOrigin.z) * rayInverse.z;
 	tzmax = (bounds[1-int(raySign[2])].z - rayOrigin.z) * rayInverse.z;
 
-	if ((tmin > tzmax) || (tzmin > tmax))
+	if ((txmin > tzmax) || (tzmin > txmax))
 	return false;
-
-	if (tzmin > tmin)
-	tmin = tzmin;
-	if (tzmax < tmax)
-	tmax = tzmax;
 
 	return true;
 }
 //Gets the primitives that are useful for the calculation by means of an acceleration structure
-void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[120] spherePointers, out int triangleCount, out int[120] trianglePointers)
+void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[20] spherePointers, out int triangleCount, out int[20] trianglePointers)
 {
 	//Start using bounding box
 	StackClear();
 	StackPush(0);
 	int pos; //Position in the acceleration structure
+	int debugCount = 0;
 	while(StackSize() > 0)
 	{
+		debugCount++;
+		
+		//if(debugCount > 50)
+		//{
+		//	sphereCount = 0;
+		//	triangleCount = 0;
+		//	return;
+		//}
+		
 		pos = StackPop();
 		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection,
 										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]),
 										vec3(accStruct[pos+3], accStruct[pos+4], accStruct[pos+5]));
 		if(!hit)
-		continue;
+			continue;
 
 		//Get the amount of values stored in the bounding box
 		int count = int(accStruct[pos+7]);
@@ -201,9 +197,9 @@ void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out in
 				//Add all primitives in it to the list to check
 				int value = int(accStruct[pos+8+i]);
 				if(value >= spheres.length()) //See if it is a sphere or triangle
-				{trianglePointers[i] = value - spheres.length(); triangleCount++;}
+				{trianglePointers[triangleCount] = value - spheres.length(); triangleCount++;}
 				else
-				{spherePointers[i] = value; sphereCount++;}
+				{spherePointers[sphereCount] = value; sphereCount++;}
 			}
 		}
 	}
