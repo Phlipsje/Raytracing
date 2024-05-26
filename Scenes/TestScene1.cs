@@ -28,7 +28,7 @@ namespace INFOGR2024Template.Scenes
                 new Sphere(new Vector3(0f, 1f, 2f), 1f, new Material(Color4.Pink, Color4.DimGray, 100f )),
                 new Sphere(new Vector3(-1, 0.3f, -1f), 0.3f, new Material(Color4.Gold, Color4.White, 50f )),
                 new Sphere(new Vector3(-2, 0.8f, -2), 0.8f, new Material(Color4.Purple, Color4.Purple, 15f )),
-                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White), new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
+                new Plane(new Vector3(1000, 0, 1000), new Vector3(0, 1, 0), new Material(Color4.White, 1), new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
                 new Sphere(new Vector3(-1, 0.5f, 0) + offset, 0.5f, new Material(Color4.Red, Color4.Gray, 50f, 1)),
                 new Sphere(new Vector3(0f, 1f, 2f) + offset, 1f, new Material(Color4.DeepPink, Color4.White, 50f)),
                 new Sphere(new Vector3(-1, 0.3f, -1f) + offset, 0.3f, new Material(Color4.Yellow, Color4.White, 100f)),

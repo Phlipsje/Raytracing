@@ -1,4 +1,5 @@
 #version 430
+
 out vec4 outputColor;
 //max 50 lights
 uniform float[300] lights;
@@ -68,30 +69,9 @@ mat2 rotate(float angle)
 
 vec3 Texturing1 (vec2 uv)
 {
-	vec4 result = vec4(0,0,0,1);
-
-	float t = 1.;
-	float offset = -5. * timer;
-	float base = 100. * length(uv);
-
-	float d = sin(-timer + 15. * length(uv));
-	d *= d * d;
-
-	mat2 rot = rotate(5. * length(uv));
-	uv += .5;
-
-	uv = abs(rot * uv);
-
-	for (int p = 0; p < 3; p++)
-	{
-		result[p] = sin(offset + t * base) - cos(20. * uv.x) - cos(20. * uv.y);
-		t += 0.05;
-	}
-
-	result.xyz *= result.xyz;
-	result.xyz = 1. - result.xyz;
-
-	return vec4(result * d).xyz;
+	int color;
+	color = (int(uv.x) + int(uv.y)) & 1;
+	return vec3(color,color,color);
 }
 
 //------------------------------------TEXTURES----------------------------------------------
