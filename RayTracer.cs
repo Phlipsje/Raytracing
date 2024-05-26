@@ -17,8 +17,9 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_camera, uniform_ligths, uniform_lengths;
+        int uniform_camera, uniform_ligths, uniform_lengths, uniform_time;
         int ssbo_primitives;
+        float time;
         float[] primitivesData, cameraData, lightsData;
         public bool MouseEnabled = false;
         private Camera camera => scene.Camera;
@@ -27,12 +28,14 @@ namespace OpenTK
         public RayTracer()
         {
             scene = new TestScene1();
+            time = 0f;
         }
         // initialize
         public void Init()
         {
             ScreenHelper.Resize(1280, 720);
 
+            
             //these lines togehter with the similar one in RenderGL somehow fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
             vertexArrayObject = GL.GenVertexArray();
             GL.BindVertexArray(vertexArrayObject);
@@ -69,6 +72,7 @@ namespace OpenTK
             uniform_camera = GL.GetUniformLocation(programID, "camera");
             uniform_lengths = GL.GetUniformLocation(programID, "lengths");
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
+            uniform_time = GL.GetUniformLocation(programID, "timer");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
             Debug.WriteLine("primitivesLoc: " + ssbo_primitives + ". ligthsLoc: " + uniform_ligths);
@@ -302,6 +306,7 @@ namespace OpenTK
         #region OpenGL stuff
         private void PrepareRenderOpenGL()
         {
+            
             GL.UseProgram(programID);
             //fill float array for camera data and send it to shader.
             cameraData = new float[]
@@ -313,6 +318,8 @@ namespace OpenTK
                 ScreenHelper.screen.width, ScreenHelper.screen.height
             };
             GL.Uniform1(uniform_camera, cameraData.Length, cameraData);
+            time += 1 / 60f;
+            GL.Uniform1(uniform_time, 1, new float[]{ time });
         }
         private void SendPrimitivesToShader()
         {

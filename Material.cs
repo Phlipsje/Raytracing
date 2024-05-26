@@ -29,12 +29,12 @@ namespace INFOGR2024Template
             SpecularWidth = specularWidth;
             TextureIndex = textureIndex;
         }
-        public Material(Color4 diffuseColor) 
+        public Material(Color4 diffuseColor, int textureIndex = 0) 
         {
             DiffuseColor = diffuseColor;
             SpecularColor = Color4.Black;
             SpecularWidth = 1;
-            TextureIndex = 0;
+            TextureIndex = textureIndex;
         }
         public Material(Color4 diffuseColor, bool isMetal, float specularity, float specularWidth, int textureIndex = 0)
         {
