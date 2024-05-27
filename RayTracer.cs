@@ -979,32 +979,16 @@ namespace OpenTK
             trianglesData = new TriangleStruct[scene.TrianglePrimitives.Count];
             int sphereLightsAmount = 0;
             int triangleLightsAmount = 0;
-            List<IPrimitive> primitives = scene.Primitives;
-            int spheresAmount = 0;
-            int planesAmount = 0;
-            int trianglesAmount = 0;
-            int sphereLightsAmount = 0;
-            int triangleLightsAmount = 0;
-            for (int i = 0; i < primitives.Count; i++)
+            foreach (Sphere sphere in scene.SpherePrimitives)
             {
-                if (primitives[i] is Sphere)
-                {
-                    spheresAmount++;
-                    if (primitives[i].Material.EmissionColor != Color4.Black)
-                        sphereLightsAmount++;
-                }
-                else if (primitives[i] is Plane)
-                    planesAmount++;
-                else
-                {
-                    trianglesAmount++;
-                    if (primitives[i].Material.EmissionColor != Color4.Black)
-                        triangleLightsAmount++;
-                }
+                if (sphere.Material.EmissionColor != Color4.Black)
+                    sphereLightsAmount++;
             }
-            spheresData = new SphereStruct[spheresAmount];
-            planesData = new PlaneStruct[planesAmount];
-            trianglesData = new TriangleStruct[trianglesAmount];
+            foreach (Triangle triangle in scene.TrianglePrimitives)
+            {
+                if (triangle.Material.EmissionColor != Color4.Black)
+                    triangleLightsAmount++;
+            }
             int[] sphereLightPointers = new int[sphereLightsAmount];
             int[] triangleLightPointers = new int[triangleLightsAmount];
 
@@ -1013,62 +997,32 @@ namespace OpenTK
             int trianglesCounter = 0;
             int sphereLightsCounter = 0;
             int triangleLightsCounter = 0;
-            for (int i = 0; i < primitives.Count; i++)
             foreach (Plane plane in scene.PlanePrimitives)
             {
-                IPrimitive primitive = primitives[i];
-                if (primitive is Sphere)
-                {
-                    Sphere sphere = (Sphere)primitive;
-                    Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
-                    Vector3 emissionColor = new Vector3(sphere.Material.EmissionColor.R, sphere.Material.EmissionColor.G, sphere.Material.EmissionColor.B);
-                    spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth, emissionColor);
-                    if (emissionColor != Vector3.Zero)
-                    {
-                        sphereLightPointers[sphereLightsCounter++] = sphereCounter;
-                    }
-                    sphereCounter++;
-                }
-                else if (primitive is Plane)
-                {
-                    Plane plane = (Plane)primitive;
-                    Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
-                    Vector3 emissionColor = new Vector3(plane.Material.EmissionColor.R, plane.Material.EmissionColor.G, plane.Material.EmissionColor.B);
-                    planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth, emissionColor);
-                    planesCounter++;
-                }
-                else
-                {
-                    Triangle triangle = (Triangle)primitive;
-                    Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
-                    Vector3 emissionColor = new Vector3(triangle.Material.EmissionColor.R, triangle.Material.EmissionColor.G, triangle.Material.EmissionColor.B);
-                    trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth, emissionColor);
-                    if (emissionColor != Vector3.Zero)
-                    {
-                        triangleLightPointers[triangleLightsCounter++] = trianglesCounter;
-                    }
-                    trianglesCounter++;
-                }
                 Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
                 Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
-                planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth);
+                Vector3 emissionColor = new Vector3(plane.Material.EmissionColor.R, plane.Material.EmissionColor.G, plane.Material.EmissionColor.B);
+                planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth, emissionColor);
                 planesCounter++;
             }
             foreach (Sphere sphere in scene.SpherePrimitives)
             {
                 Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
                 Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
-                spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth);
+                Vector3 emissionColor = new Vector3(sphere.Material.EmissionColor.R, sphere.Material.EmissionColor.G, sphere.Material.EmissionColor.B);
+                spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth, emissionColor);
+                if (emissionColor != Vector3.Zero)
+                    sphereLightPointers[sphereLightsCounter++] = sphereCounter;
                 sphereCounter++;
             }
             foreach (Triangle triangle in scene.TrianglePrimitives)
             {
                 Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
                 Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
-                trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth);
+                Vector3 emissionColor = new Vector3(triangle.Material.EmissionColor.R, triangle.Material.EmissionColor.G, triangle.Material.EmissionColor.B);
+                trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth, emissionColor);
+                if (emissionColor != Vector3.Zero)
+                    triangleLightPointers[triangleLightsCounter++] = trianglesCounter;
                 trianglesCounter++;
             }
             if(scene.PointLights.Count > maxLights)

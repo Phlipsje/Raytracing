@@ -7,8 +7,10 @@ namespace INFOGR2024Template.Scenes
 {
     public class PathtracingScene : IScene
     {
-        public List<IPrimitive> Primitives { get; set; }
         public Camera Camera {  get; set; }
+        public List<Plane> PlanePrimitives { get; set; }
+        public List<Sphere> SpherePrimitives { get; set; }
+        public List<Triangle> TrianglePrimitives { get; set; }
         public List<PointLight> PointLights { get; set; }
         
         public PathtracingScene()
@@ -17,9 +19,17 @@ namespace INFOGR2024Template.Scenes
             Vector3 offset = new Vector3(10, 0, 0);
             Camera = new Camera(new Vector3(-1, 3f, -2), new Vector3(0f, -1f, 1f), new Vector3(1, 0f, 0), 1f, 1.6f, 0.9f);
             //Camera = new Camera(new Vector3(0, 1f, -5), new Vector3(0f, 0f, 1f), new Vector3(1f, 0f, 0), 1f, 1.6f, 0.9f);
-            Primitives = new List<IPrimitive>
+            PlanePrimitives = new List<Plane>
             {                
-                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White, Color4.Black, false, 1f)),
+                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White, Color4.Black, false, 1f))
+                
+            };
+            SpherePrimitives = new List<Sphere>
+            {
+                new Sphere(new Vector3(0.75f, 1.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.White, 0f))
+            };
+            TrianglePrimitives = new List<Triangle>
+            {
                 new Triangle(new Vector3(1.5f, 0, 1.5f) * roomSize, new Vector3(1.5f, 0, -1.5f) * roomSize, new Vector3(1.5f, 3f, 1.5f) * roomSize, new Material(Color4.Red)),
                 new Triangle(new Vector3(1.5f, 3f, 1.5f) * roomSize, new Vector3(1.5f, 3f, -1.5f) * roomSize, new Vector3(1.5f, 0f, -1.5f) * roomSize, new Material(Color4.Red)),
                 new Triangle(new Vector3(-1.5f, 0, 1.5f) * roomSize, new Vector3(-1.5f, 0, -1.5f) * roomSize, new Vector3(-1.5f, 3f, 1.5f) * roomSize, new Material(Color4.Green)),
@@ -32,9 +42,8 @@ namespace INFOGR2024Template.Scenes
                 new Triangle(new Vector3(-1.5f, 3f, 1.5f) * roomSize, new Vector3(1.5f, 3f, 1.5f) * roomSize, new Vector3(-1.5f, 3f, -1.5f) * roomSize, new Material(Color4.White)),
                 new Triangle(new Vector3(0.3f, 2.999f, 0.3f) * roomSize, new Vector3(0.3f, 2.999f, -0.3f) * roomSize, new Vector3(-0.3f, 2.999f, -0.3f) * roomSize, new Material(Color4.White, 10f)),
                 new Triangle(new Vector3(-0.3f, 2.999f, 0.3f) * roomSize, new Vector3(0.3f, 2.999f, 0.3f) * roomSize, new Vector3(-0.3f, 2.999f, -0.3f) * roomSize, new Material(Color4.White, 10f)),
-                new Sphere(new Vector3(0.75f, 1.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.White, 0f))
             };
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(0.5f, 0, 0), new Material(Color4.Red, Color4.LightGray, false, 100f))).ToList();
+            TrianglePrimitives = TrianglePrimitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(0.5f, 0, 0), new Material(Color4.Red, Color4.LightGray, false, 100f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Black, new Color4(50, 50, 255, 255), true, 1f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise, Color4.White, false, 1f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, true, 0.01f))).ToList();
