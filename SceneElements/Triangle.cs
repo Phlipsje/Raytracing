@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using INFOGR2024Template.Helper_classes;
 using Microsoft.VisualBasic;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
@@ -68,6 +70,24 @@ namespace INFOGR2024Template.SceneElements
                 || Vector3.Dot(Vector3.Cross(PointA - PointC, intersection - PointC), Normal) < 0)
                 return new Tuple<float, Material>(float.MinValue, Material);
             return new Tuple<float, Material>(t, Material);
+        }
+        
+        public BoundingBox BoundingBox
+        {
+            get
+            {
+                Vector3[] vectors = new Vector3[2];
+                float minX = MathF.Min(PointA.X, MathF.Min(PointB.X, PointC.X));
+                float minY = MathF.Min(PointA.Y, MathF.Min(PointB.Y, PointC.Y));
+                float minZ = MathF.Min(PointA.Z, MathF.Min(PointB.Z, PointC.Z));
+                float maxX = MathF.Max(PointA.X, MathF.Max(PointB.X, PointC.X));
+                float maxY = MathF.Max(PointA.Y, MathF.Max(PointB.Y, PointC.Y));
+                float maxZ = MathF.Max(PointA.Z, MathF.Max(PointB.Z, PointC.Z));
+                
+                vectors[0] = new Vector3(minX, minY, minZ);
+                vectors[1] = new Vector3(maxX, maxY, maxZ);
+                return new BoundingBox(vectors[0], vectors[1]);
+            }
         }
     }
 }

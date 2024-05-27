@@ -1,4 +1,5 @@
 using INFOGR2024Template;
+using INFOGR2024Template.Helper_classes;
 using OpenTK.Mathematics;
 
 namespace OpenTK.SceneElements;
@@ -36,5 +37,16 @@ public class Sphere : IPrimitive
         if (t2 <= 0.001f)
             return new Tuple<float, Material>(t1, Material);
         return new Tuple<float, Material>(t2, Material);
+    }
+
+    public BoundingBox BoundingBox
+    {
+        get
+        {
+            Vector3[] vectors = new Vector3[2];
+            vectors[0] = new Vector3(Center.X - Radius, Center.Y - Radius, Center.Z - Radius);
+            vectors[1] = new Vector3(Center.X + Radius, Center.Y + Radius, Center.Z + Radius);
+            return new BoundingBox(vectors[0], vectors[1]);
+        }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using INFOGR2024Template.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 
@@ -30,6 +31,18 @@ namespace INFOGR2024Template.SceneElements
             if(denominator == 0)
                 return new Tuple<float, Material>(float.MinValue, Material);
             return new Tuple<float, Material>(Vector3.Dot(Center - ray.Origin, Normal) / denominator , Material);
+        }
+        
+        //NOTE: BoundingBox is not used for planes, because they are infinitely long
+        public BoundingBox BoundingBox
+        {
+            get
+            {
+                Vector3[] vectors = new Vector3[2];
+                vectors[0] = new Vector3(0, 0, 0);
+                vectors[1] = new Vector3(0, 0, 0);
+                return new BoundingBox(vectors[0], vectors[1]);
+            }
         }
     }
 }

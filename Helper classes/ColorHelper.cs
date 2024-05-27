@@ -15,6 +15,10 @@ public static class ColorHelper
     /// <returns>The integer value of the color</returns>
     public static int ColorToInt(Color4 color)
     {
+        //Clamping the values, because otherwise they can exceed 256 in integer form and then green become red and other stupid stuff
+        color.R = MathHelper.Clamp(color.R, 0, 1);
+        color.G = MathHelper.Clamp(color.G, 0, 1);
+        color.B = MathHelper.Clamp(color.B, 0, 1);
         return ((int)MathF.Round(color.R*255) << 16) + ((int)MathF.Round(color.G*255) << 8) + (int)MathF.Round(color.B*255);
     }
 
