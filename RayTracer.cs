@@ -52,7 +52,7 @@ namespace OpenTK
             //load shaders
             programID = GL.CreateProgram();
             LoadShader("../../../shaders/raytracer_vs.glsl", ShaderType.VertexShader, programID, out vertexShaderID);
-            LoadShader("../../../shaders/pathtracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
+            LoadShader("../../../shaders/raytracer_fs.glsl", ShaderType.FragmentShader, programID, out fragmentShaderID);
             GL.LinkProgram(programID);
             Debug.WriteLine(GL.GetProgramInfoLog(programID));
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
