@@ -123,12 +123,6 @@ namespace OpenTK
             switch (CameraMode)
             {
                 case CameraMode.Debug2D:
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D1))
-                        viewAxis = ViewAxis.Topdown;
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
-                        viewAxis = ViewAxis.SideViewXAxis;
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
-                        viewAxis = ViewAxis.SideViewZAxis;
                     RenderDebug2D();
                     break;
                 case CameraMode.Debug3D:
@@ -1249,10 +1243,23 @@ namespace OpenTK
             }
 
             //switching rendering
-            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D4))
-                CameraMode = CameraMode.Debug3D;
-            else if(InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D5))
+            if(InputHelper.keyBoard.IsKeyPressed(Keys.D1))
                 CameraMode = CameraMode.OpenGL;
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.Topdown;
+            }
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.SideViewXAxis;
+            }
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D4))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.SideViewZAxis;
+            }
         }
     }
 
