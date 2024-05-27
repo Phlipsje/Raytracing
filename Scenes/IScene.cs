@@ -1,8 +1,6 @@
 ﻿using OpenTK.SceneElements;
 using INFOGR2024Template.Helper_classes;
 using INFOGR2024Template.SceneElements;
-using OpenTK.Mathematics;
-using INFOGR2024Template.SceneElements;
 
 namespace INFOGR2024Template.Scenes
 {

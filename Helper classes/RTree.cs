@@ -7,7 +7,7 @@ namespace INFOGR2024Template.Helper_classes;
 
 /// <summary>
 /// This is a R*-tree
-/// https://en.wikipedia.org/wiki/R*-tree
+/// https://en.wikipedia.org/wiki/R*-tree (which is a more costly, but faster, version of an R-Tree)
 /// </summary>
 public class RTree
 {
@@ -18,14 +18,27 @@ public class RTree
     private int maximumChildNodes { get; } = 7; //Maximum amount of child nodes stored inside of 1 node
 
     private int maximumValuesPerNode { get; } = 5; //Maximum amount of values that can be stored in 1 node before it overflows
-    //This holds the method to turn the treeNodes into a single array to pass as a buffer to OpenGL
-
+    
     public RTree(IScene scene)
     {
         this.scene = scene;
         rootNode = new TreeNode(maximumChildNodes, maximumValuesPerNode, spherePrimitives, trianglePrimitives);
     }
-
+    
+    /// <summary>
+    /// Creates a list of floats that describe the data structure
+    /// The list looks like this:
+    /// 0-5 = boundingBoxValues (X, then Y, then Z. Min values, then max values)
+    /// 6 = bool 0 or 1, 1 if it is a leaf and 0 if a branch
+    /// In case it is a leaf
+    /// -> 7 = amount of pointers to primitives
+    /// -> 8-n = the pointer values (These are the values in the primitive list)
+    /// Else in case it is a branch
+    /// -> 7 = amount of child nodes
+    /// -> 8-n = the indices where the other nodes start (so pointers)
+    /// After reaching the end of a bounding box, the next one starts right after
+    /// </summary>
+    /// <returns>A 1D array of floats which can later be sent to the GPU</returns>
     public float[] TurnIntoFloatArray()
     {
         List<float> floatList = new List<float>();
@@ -91,6 +104,7 @@ public class RTree
         /// Else in case it is a branch
         /// -> 7 = amount of child nodes
         /// -> 8-n = the indices where the other nodes start (so pointers)
+        /// After reaching the end of a bounding box, the next one starts right after
         /// </summary>
         /// <param name="floatList"></param>
         /// <returns></returns>

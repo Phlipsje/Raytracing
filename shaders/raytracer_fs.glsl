@@ -55,13 +55,14 @@ layout(binding = 2, std430) readonly buffer ssbo2
 {
 	Triangle triangles[];
 };
+//SSBO for the acceleration structure (in this case an R-Tree)
 layout(binding = 3, std430) readonly buffer ssbo3
 {
 	float accStruct[]; //Short for acceleration structure
 };
 
 //Used to implement recursion
-//Note, is static size and doesn't check size, if program crashes, increase size
+//Note, is static size and doesn't check size, choosing a low value can cause the array to be exceeded and then you get memory leaks
 const int stackSize = 100; //Used for stack
 int counter = -1; //Used for stack
 int[stackSize] stackPointers;
@@ -128,6 +129,8 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 		return -1;
 	return t;
 }
+//This is a more compact form of the slab method mentioned in the slide, 
+//original code can be found here: https://tavianator.com/2011/ray_box.html
 bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, vec3 maxValuesBB)
 {
 	float txmin, txmax, tymin, tymax, tzmin, tzmax;
@@ -160,8 +163,8 @@ bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, v
 void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[500] trianglePointers)
 {
 	//Start using bounding box
-	StackClear();
-	StackPush(0);
+	StackClear(); //Clear just to be certain, but shouldn't be necessary in theory
+	StackPush(0); //Push the start of the acceleration structure to the stack
 	int pos; //Position in the acceleration structure
 	while(StackSize() > 0)
 	{
@@ -202,7 +205,7 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 	int[] trianglePointers;
 	GetRelevantPrimitives(shadowRayOrigin, shadowRayDirection, sphereCount, spherePointers, triangleCount, trianglePointers);
 		
-	//Check all spheres in the scene for an intersection
+	//Check all relevant spheres in the scene for an intersection
 	for (int i = 0; i < sphereCount; i++)
 	{
 		Sphere sphere = spheres[spherePointers[i]];
@@ -223,7 +226,7 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 			return true;
 		}
 	}
-	//Check all triangles in the scene for an intersection
+	//Check all relevant triangles in the scene for an intersection
 	for (int i = 0; i < triangleCount; i++)
 	{
 		Triangle triangle = triangles[trianglePointers[i]];
@@ -243,7 +246,7 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 	int[] trianglePointers;
 	GetRelevantPrimitives(rayOrigin, rayDirection, sphereCount, spherePointers, triangleCount, trianglePointers);
 	
-	//intersect with all spheres:
+	//intersect with all relevant spheres:
 	for (int i = 0; i < sphereCount; i++)
 	{
 		//sphere is the current sphere being looked at
@@ -276,7 +279,7 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitNormal = plane.normal;
 		}
 	}
-	//intersect with all triangles
+	//intersect with all relevant triangles
 	for (int i = 0; i < triangleCount; i++)
 	{
 		Triangle triangle = triangles[trianglePointers[i]];
@@ -322,7 +325,7 @@ void main()
 	//Find the closest intersection with all the objects in the scene
 	FindClosestIntersection(rayOrigin, rayDirection, 0, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal);
 
-	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL
+	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL (so this is a workaround), this was done before we implemented the stack
 	//value that the final color will be multiplied with, instantiated to be just 1, 1, 1 so it has no effect if no mirrors are used.
 	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
 	vec3 finalColor = vec3(0, 0, 0);

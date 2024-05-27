@@ -1,6 +1,5 @@
 using INFOGR2024Template.SceneElements;
 using INFOGR2024Template.Scenes;
-using INFOGR2024Template;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
@@ -76,7 +75,7 @@ namespace OpenTK
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
-            Debug.WriteLine("ligthsLoc: " + uniform_ligths);
+            Debug.WriteLine("lightsLoc: " + uniform_ligths);
             Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));       
 
             //bind buffer for positions
@@ -96,7 +95,7 @@ namespace OpenTK
         // tick: renders one frame
         public void Tick()
         {
-            //Stopwatch stops first and then starts, because otherwise it doesn't take into account the time that the GPU uses
+            //Stopwatch stops first and then starts, because otherwise it doesn't take into account the time that the GPU uses to render a frame
             timer.Stop();
             Console.WriteLine(timer.ElapsedMilliseconds);
             timer.Reset();
@@ -106,29 +105,11 @@ namespace OpenTK
             ScreenHelper.Clear();
             scene.Tick();
             HandleInput();
-
-            if (InputHelper.keyBoard.IsKeyPressed(Keys.F1))
-            {
-                CameraMode = CameraMode.OpenGL;
-            }
-            if (InputHelper.keyBoard.IsKeyPressed(Keys.F2))
-            {
-                CameraMode = CameraMode.Debug2D;
-            }
             
             switch (CameraMode)
             {
                 case CameraMode.Debug2D:
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D1))
-                        viewAxis = ViewAxis.Topdown;
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
-                        viewAxis = ViewAxis.SideViewXAxis;
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
-                        viewAxis = ViewAxis.SideViewZAxis;
                     RenderDebug2D();
-                    break;
-                case CameraMode.Debug3D:
-                    RenderDebug3D();
                     break;
                 case CameraMode.OpenGL:
                     //in this case actual rendering is handled by RenderGL()
@@ -176,8 +157,8 @@ namespace OpenTK
                     break;
             }
         }
-
-        //This code is copy-pasted 3 times for different axis, because that was the easiest approach
+        
+        ///This code is copy-pasted 3 times for different axis, not because it is good, because that was the easiest approach
         private void RenderDebugTopDown(float viewingRadius, int linesPerCircle, int exampleRayCount)
         {
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
@@ -433,6 +414,7 @@ namespace OpenTK
             }
         }
         
+        ///This code is copy-pasted 3 times for different axis, not because it is good, because that was the easiest approach
         private void RenderDebugSideXAxis(float viewingRadius, int linesPerCircle, int exampleRayCount)
         {
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
@@ -688,6 +670,7 @@ namespace OpenTK
             }
         }
         
+        ///This code is copy-pasted 3 times for different axis, not because it is good, because that was the easiest approach
         private void RenderDebugSideZAxis(float viewingRadius, int linesPerCircle, int exampleRayCount)
         {
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
@@ -952,102 +935,6 @@ namespace OpenTK
         }
         #endregion
 
-        #region Debug3D
-        private void RenderDebug3D()
-        {
-            int width = ScreenHelper.screen.width;
-            int height = ScreenHelper.screen.height;
-            Camera camera = scene.Camera;
-            //for every pixel
-            for (int x = 0; x < width; x++) 
-            {
-                for(int y = 0; y < height; y++)
-                {
-                    //make ray from camera through the plane in the correct spot
-                    Vector3 bottomLeft = camera.BottomLeftCameraPlane;
-                    Vector3 bottomRight = camera.BottomRightCameraPlane;
-                    Vector3 topLeft = camera.TopLeftCameraPlane;
-                    Vector3 planePos = bottomLeft + ((float)x/width) * (bottomRight - bottomLeft) + ((float)y/height) * (topLeft - bottomLeft);
-                    Vector3 direction = planePos - camera.Position;
-                    Ray viewRay = new Ray(camera.Position, direction);
-
-                    //for every object in the scene
-                    for(int i = 0; i < scene.PlanePrimitives.Count + scene.SpherePrimitives.Count + scene.TrianglePrimitives.Count; i++) 
-                    {
-                        //Check for intersection and if the object is the closest hit object so far, store the distance and color
-                        Tuple<float, Material> tuple = GetPrimitive(i).RayIntersect(viewRay);
-                        if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
-                        {
-                            viewRay.T = tuple.Item1;
-                            viewRay.Color = tuple.Item2.DiffuseColor;
-                        }
-                    }
-                    //The ray didn't hit so the rest can be skipped
-                    if (viewRay.T < 0f)
-                        continue;
-                    //if there are no point lights in the scene, immediately return the color without lighting
-                    if (scene.PointLights.Count == 0)
-                    {
-                        ScreenHelper.SetPixel(x, y, viewRay.Color);
-                        continue;
-                    }
-
-                    //the illumination of the current pixel
-                    float illumination = 0f;
-                    //the intensity of each point light
-                    float lightIntensity = 1f / scene.PointLights.Count;
-                    Vector3 hitPos = viewRay.Origin + viewRay.Direction * viewRay.T;
-                    //for each light
-                    for (int l = 0; l < scene.PointLights.Count; l++)
-                    {
-                        Vector3 lightPos = scene.PointLights[l].Position;
-                        float distanceToLight = (lightPos - hitPos).Length;
-                        Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
-                        //for each object
-                        for (int p = 0; p < scene.PlanePrimitives.Count + scene.SpherePrimitives.Count + scene.TrianglePrimitives.Count; p++)
-                        {
-                            //check if it is between the lamp and the light
-                            Tuple<float, Material> tuple = GetPrimitive(p).RayIntersect(shadowRay);
-                            if (tuple.Item1 > 0.001f && tuple.Item1 < distanceToLight)
-                            {
-                                shadowRay.T = tuple.Item1;
-                                break;
-                            }
-                        }
-                        //if no objects were between the lamp and the light
-                        if (shadowRay.T < 0f)
-                        {
-                            //add the lamps 'intensity' to the light
-                            illumination += lightIntensity;
-                        }
-                    }
-                    //if there is illumanition 
-                    if (illumination > 0f)
-                    {
-                        Color4 c = viewRay.Color;
-                        //draw the color adjusted by illumination to the screen
-                        ScreenHelper.SetPixel(x, y, new Color4(c.R * illumination, c.G * illumination, c.B * illumination, 1f));
-                    }
-                }
-            }
-            Debug.WriteLine("frame finished");
-        }
-
-        private IPrimitive GetPrimitive(int primitivePointer)
-        {
-            if (primitivePointer < scene.PlanePrimitives.Count)
-            {
-                return scene.PlanePrimitives[primitivePointer];
-            }
-            if (primitivePointer < scene.PlanePrimitives.Count + scene.SpherePrimitives.Count)
-            {
-                return scene.SpherePrimitives[primitivePointer - scene.PlanePrimitives.Count];
-            }
-
-            return scene.TrianglePrimitives[primitivePointer - (scene.SpherePrimitives.Count + scene.PlanePrimitives.Count)];
-        }
-        #endregion
-
         #region OpenGL stuff
         private void PrepareRenderOpenGL()
         {
@@ -1225,10 +1112,23 @@ namespace OpenTK
                 camera.Position += moveDirection.Normalized() * speed * delta;
 
             //switching rendering
-            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D4))
-                CameraMode = CameraMode.Debug3D;
-            else if(InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D5))
+            if(InputHelper.keyBoard.IsKeyPressed(Keys.D1))
                 CameraMode = CameraMode.OpenGL;
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.Topdown;
+            }
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.SideViewXAxis;
+            }
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D4))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.SideViewZAxis;
+            }
         }
     }
 
