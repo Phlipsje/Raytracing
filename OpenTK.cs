@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;

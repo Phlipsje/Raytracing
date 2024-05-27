@@ -85,4 +85,19 @@ public struct BoundingBox
         //Else return true
         return true;
     }
+
+    public float OverlapSize(BoundingBox boundingBox)
+    {
+        if (!Overlap(boundingBox))
+            return 0;
+        
+        float minXOverlap = MathF.Max(MinimumValues.X, boundingBox.MinimumValues.X);
+        float minYOverlap = MathF.Max(MinimumValues.Y, boundingBox.MinimumValues.Y);
+        float minZOverlap = MathF.Max(MinimumValues.Z, boundingBox.MinimumValues.Z);
+        float maxXOverlap = MathF.Min(MaximumValues.X, boundingBox.MaximumValues.X);
+        float maxYOverlap = MathF.Min(MaximumValues.Y, boundingBox.MaximumValues.Y);
+        float maxZOverlap = MathF.Min(MaximumValues.Z, boundingBox.MaximumValues.Z);
+
+        return (maxXOverlap - minXOverlap) * (maxYOverlap - minYOverlap) * (maxZOverlap - minZOverlap);
+    }
 }
