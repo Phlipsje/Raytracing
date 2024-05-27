@@ -1,18 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
-using INFOGR2024Template.Helper_classes;
-using Microsoft.VisualBasic;
+﻿using INFOGR2024Template.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 
 namespace INFOGR2024Template.SceneElements
 {
-    internal class Triangle : IPrimitive
+    public class Triangle : IPrimitive
     {
         public Vector3 Center { get; set; }
         public Vector3 Normal { get; private set; }

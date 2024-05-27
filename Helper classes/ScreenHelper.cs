@@ -1,7 +1,5 @@
-using OpenTK.Graphics.ES11;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
-using SixLabors.ImageSharp;
 
 namespace OpenTK.Helper_classes;
 
