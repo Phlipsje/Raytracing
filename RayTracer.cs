@@ -18,7 +18,7 @@ namespace OpenTK
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
         int uniform_camera, uniform_ligths, uniform_sphereLights, uniform_triangleLights, uniform_lengths, uniform_time, uniform_iterations;
-        int ssbo_spheres, ssbo_planes, ssbo_triangles, ssbo_accelerationStructure;
+        int ssbo_spheres, ssbo_planes, ssbo_triangles, ssbo_lastScreen, ssbo_accelerationStructure;
         float[] cameraData, lightsData;
         SphereStruct[] spheresData;
         PlaneStruct[] planesData;
@@ -50,6 +50,8 @@ namespace OpenTK
             //these lines together with the similar one in RenderGL somehow fixed the unintended data sharing between this program and the screen program. I don't exactly know why so have to look into it
             vertexArrayObject = GL.GenVertexArray();
             GL.BindVertexArray(vertexArrayObject);
+            
+            Console.WriteLine("Checkpoint post binding vertices");
 
             //load shaders
             programID = GL.CreateProgram();
@@ -60,12 +62,16 @@ namespace OpenTK
             Debug.WriteLine(GL.GetShaderInfoLog(fragmentShaderID));
             Debug.WriteLine(GL.GetShaderInfoLog(vertexShaderID));
             Debug.WriteLine(GL.GetError());
+            
+            Console.WriteLine("Checkpoint pre detaching");
 
             // the program contains the compiled shaders, we can delete the source
             GL.DetachShader(programID, vertexShaderID);
             GL.DetachShader(programID, fragmentShaderID);
             GL.DeleteShader(vertexShaderID);
             GL.DeleteShader(fragmentShaderID);
+            
+            Console.WriteLine("Checkpoint post shader loading");
 
             //create vertex information for screen filling quad
             float[] vertexData = new float[]
@@ -104,7 +110,7 @@ namespace OpenTK
              VertexAttribPointerType.Float,
             false, 0, 0
              );
-            Console.WriteLine("Checkpoint 1");
+            Console.WriteLine("Checkpoint pre sending primitives");
             
             SendPrimitivesToShader();
             
@@ -1097,7 +1103,7 @@ namespace OpenTK
             GL.BufferData(BufferTarget.ShaderStorageBuffer, trianglesData.Length * Marshal.SizeOf<TriangleStruct>(), trianglesData, BufferUsageHint.StaticRead);
             
             //bind buffer for the triangles buffer ssbo3
-            int ssbo_lastScreen = GL.GenBuffer();
+            ssbo_lastScreen = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_lastScreen);
             //not sure about the order of last two lines
             GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 3, ssbo_lastScreen);

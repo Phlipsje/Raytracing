@@ -82,36 +82,6 @@ layout(binding = 3, std430) restrict buffer ssbo3
 {
 	vec4 lastScreen[];
 };
-//random number generator(actually encryption algorithm)
-//after testing seems to be fairly random, with some small patterns appearing after some time, but nothing major
-//setup
-vec2 RandomNumber(float offset)
-{
-	uvec2 v = uvec2(gl_FragCoord.xy * (100.0f + 0.1f * time + randomsUsed + offset));
-	uint sum = 0; uint k[4] = { 3355524772, 2738958700, 2911926141, 2123724318 }; uint delta = 2654435769;
-	//32 rounds gave good results
-	for (int i = 0; i < 128; i++)
-	{
-		sum += delta;
-		v.x += ((v.y << 4) + k[0]) & (v.y + sum) & ((v.y >> 5) + k[1]);
-		v.y += ((v.x << 4) + k[2]) & (v.x + sum) & ((v.x >> 5) + k[3]);
-	}
-	//divide by max range of uint to arrive at fractional number between 0 and 1
-	float x = v.x / 4294967295.0f;
-	float y = v.y / 4294967295.0f;
-	return vec2(x, y);
-	randomsUsed++;
-}
-//need to find a way to quickly generate 3 random numbers without wasting two computations
-vec3 RandomDirection(in vec3 normal)
-{
-	vec3 d = vec3(RandomNumber(0.0f).xy, RandomNumber(10.0f).x);
-	d *= 2.0f; d -= vec3(1, 1, 1);
-	d = normalize(d);
-	if(dot(d, normal) < 0)
-		d = -d;
-	return d;
-}
 //SSBO for the acceleration structure (in this case an R-Tree)
 layout(binding = 4, std430) readonly buffer ssbo4
 {
@@ -144,6 +114,37 @@ void StackClear()
 int StackSize()
 {
 	return counter+1;
+}
+
+//random number generator(actually encryption algorithm)
+//after testing seems to be fairly random, with some small patterns appearing after some time, but nothing major
+//setup
+vec2 RandomNumber(float offset)
+{
+	uvec2 v = uvec2(gl_FragCoord.xy * (100.0f + 0.1f * time + randomsUsed + offset));
+	uint sum = 0; uint k[4] = { 3355524772, 2738958700, 2911926141, 2123724318 }; uint delta = 2654435769;
+	//32 rounds gave good results
+	for (int i = 0; i < 128; i++)
+	{
+		sum += delta;
+		v.x += ((v.y << 4) + k[0]) & (v.y + sum) & ((v.y >> 5) + k[1]);
+		v.y += ((v.x << 4) + k[2]) & (v.x + sum) & ((v.x >> 5) + k[3]);
+	}
+	//divide by max range of uint to arrive at fractional number between 0 and 1
+	float x = v.x / 4294967295.0f;
+	float y = v.y / 4294967295.0f;
+	return vec2(x, y);
+	randomsUsed++;
+}
+//need to find a way to quickly generate 3 random numbers without wasting two computations
+vec3 RandomDirection(in vec3 normal)
+{
+	vec3 d = vec3(RandomNumber(0.0f).xy, RandomNumber(10.0f).x);
+	d *= 2.0f; d -= vec3(1, 1, 1);
+	d = normalize(d);
+	if(dot(d, normal) < 0)
+	d = -d;
+	return d;
 }
 
 //first three values of vec4 form the normal vector, last value is the t value
@@ -217,7 +218,7 @@ bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, v
 	return true;
 }
 //Gets the primitives that are useful for the calculation by means of an acceleration structure
-void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[500] trianglePointers)
+void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[100] trianglePointers)
 {
 	//Start using bounding box
 	StackClear(); //Clear just to be certain, but shouldn't be necessary in theory
