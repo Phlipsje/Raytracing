@@ -35,7 +35,7 @@ public class RTree
     /// -> 8-n = the pointer values (These are the values in the primitive list)
     /// Else in case it is a branch
     /// -> 7 = amount of child nodes
-    /// -> 8-n = the indices where the other nodes start (so pointers)
+    /// -> 8-n = the indices where the other nodes start (so pointers) NOTE: these are not absolute, but relative to the previous!
     /// After reaching the end of a bounding box, the next one starts right after
     /// </summary>
     /// <returns>A 1D array of floats which can later be sent to the GPU</returns>

@@ -30,7 +30,11 @@ namespace OpenTK
         // constructor
         public RayTracer()
         {
+            timer.Start();
             scene = new TestScene1();
+            timer.Stop();
+            Console.WriteLine("Time to build scene + acceleration structure: " + timer.ElapsedMilliseconds);
+            timer.Reset();
         }
         // initialize
         public void Init()
