@@ -26,14 +26,14 @@ Bonus features implemented:
 [X] Triangle primitives: single triangles or meshes
 [ ] Interpolated normals: only required on triangle primitives, 3 different vertex normals must be specified
 [ ] Spot lights: smooth falloff optional
-[ ] Glossy reflections: not only of light sources but of other objects
+[X] Glossy reflections: not only of light sources but of other objects
 [X] Anti-aliasing
 [ ] Parallelized: using parallel-for, async tasks, threads, or [fill in other method]
-[ ] Textures: on all implemented primitives
+[X] Textures: on all implemented primitives
 [ ] Bump or normal mapping: on all implemented primitives
 [ ] Environment mapping: sphere or cube map, without intersecting actual sphere/cube/triangle primitives
 [ ] Refraction: also requires a reflected ray at every refractive surface, recursive
-[ ] Area lights: soft shadows
+[X] Area lights: soft shadows
 [X] Acceleration structure: bounding box or hierarchy, scene with 5000+ primitives
 Note: [provide one measurement of speed/time with and without the acceleration structure]
 [X] GPU implementation: using a fragment shader with OpenGL
