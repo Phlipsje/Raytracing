@@ -42,3 +42,4 @@ Notes:
 We have an extra feature to import simple .obj files to render more complex 3D models (that is how we loaded in the teapot).
 We implemented an R*-Tree for our acceleration structure, we used wikipedia (https://en.wikipedia.org/wiki/R*-tree) as a source.
 The checking of intersections with bounding boxes uses the proposed approach in the slides, but with a more optimized code implementation mentioned here: https://tavianator.com/2011/ray_box.html
+The R*-tree speeds up a 'large' scene of around 6000 primitives with 6 light sources and a reflective floor by 3x times from average of 300 milliseconds to load a frame to an average of 110 milliseconds.
