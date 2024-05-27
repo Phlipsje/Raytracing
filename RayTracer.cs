@@ -1134,11 +1134,11 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, 16 * lastScreen.Length, lastScreen, BufferUsageHint.DynamicDraw);
             
-            //bind buffer for the acceleration structure buffer ssbo3
+            //bind buffer for the acceleration structure buffer ssbo4
             ssbo_accelerationStructure = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_accelerationStructure);
             //not sure about the order of last two lines
-            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 3, ssbo_accelerationStructure);
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 4, ssbo_accelerationStructure);
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, scene.AccelerationStructureData.Length*4, scene.AccelerationStructureData, BufferUsageHint.StaticRead);
         }   

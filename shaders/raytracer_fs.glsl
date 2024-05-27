@@ -113,7 +113,7 @@ vec3 RandomDirection(in vec3 normal)
 	return d;
 }
 //SSBO for the acceleration structure (in this case an R-Tree)
-layout(binding = 3, std430) readonly buffer ssbo3
+layout(binding = 4, std430) readonly buffer ssbo4
 {
 	float accStruct[]; //Short for acceleration structure
 };
@@ -254,7 +254,6 @@ void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out in
 		}
 	}
 }
-bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
 bool ObjectInWayOfLight(in float distanceToLightSquared, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
 {
 	int sphereCount;

@@ -21,6 +21,7 @@ namespace INFOGR2024Template.Scenes
             PlanePrimitives = new List<Plane>
             {
                 new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.DimGray, Color4.LightGray, true, 1f)),
+                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White, Color4.Black, false, 1f)),
             };
             SpherePrimitives = new List<Sphere>
             {
@@ -28,7 +29,6 @@ namespace INFOGR2024Template.Scenes
                 new Sphere(new Vector3(0f, 1f, 2f), 1f, new Material(Color4.Black, Color4.Gray, true, 100f)),
                 new Sphere(new Vector3(-1, 0.3f, -1f), 0.3f, new Material(Color4.Gold, Color4.LightGray, false, 50f)),
                 new Sphere(new Vector3(-2, 0.8f, -2), 0.8f, new Material(Color4.Purple, Color4.Purple, false, 15f)),
-                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White, Color4.Black, false, 1f)),
                 new Sphere(new Vector3(-1, 0.5f, 0) + offset, 0.5f, new Material(Color4.Red, Color4.Gray, false, 50f)),
                 new Sphere(new Vector3(0f, 1f, 2f) + offset, 1f, new Material(Color4.DeepPink, Color4.LightGray, false, 50f)),
                 new Sphere(new Vector3(-1, 0.3f, -1f) + offset, 0.3f, new Material(Color4.Yellow, Color4.LightGray, false, 100f)),
