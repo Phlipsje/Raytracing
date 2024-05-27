@@ -14,7 +14,8 @@ namespace INFOGR2024Template.SceneElements
         public bool IsPureSpecular;
         public Vector3 SpecularColor;
         public float Specularity;
-        public SphereStruct(Vector3 center, float radius, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity)
+        public float TextureIndex;
+        public SphereStruct(Vector3 center, float radius, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity, float textureIndex)
         {
             Center = center;
             Radius = radius;
@@ -22,6 +23,7 @@ namespace INFOGR2024Template.SceneElements
             IsPureSpecular = isPureSpecular;
             SpecularColor = specularColor;
             Specularity = specularity;
+            TextureIndex = textureIndex;
         }
     }
     [StructLayout(LayoutKind.Sequential)]
@@ -35,7 +37,10 @@ namespace INFOGR2024Template.SceneElements
         public bool IsPureSpecular;
         public Vector3 SpecularColor;
         public float Specularity;
-        public PlaneStruct(Vector3 position, Vector3 normal, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity)
+        public float TextureIndex;
+        public Vector3 UVector;
+        public Vector3 VVector;
+        public PlaneStruct(Vector3 position, Vector3 normal, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity, float textureIndex, Vector3 uVector, Vector3 vVector)
         {
             Position = position;
             Normal = normal;
@@ -43,6 +48,9 @@ namespace INFOGR2024Template.SceneElements
             IsPureSpecular = isPureSpecular;
             SpecularColor = specularColor;
             Specularity = specularity;
+            TextureIndex = textureIndex;
+            UVector = uVector;
+            VVector = vVector;
         }
     }
     [StructLayout(LayoutKind.Sequential)]
@@ -60,7 +68,11 @@ namespace INFOGR2024Template.SceneElements
         public bool IsPureSpecular;
         public Vector3 SpecularColor;
         public float Specularity;
-        public TriangleStruct(Vector3 pointA, Vector3 pointB, Vector3 pointC, Vector3 normal, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity)
+        public float TextureIndex;
+        public Vector2 UVPointA;
+        public Vector2 UVPointB;
+        public Vector2 UVPointC;
+        public TriangleStruct(Vector3 pointA, Vector3 pointB, Vector3 pointC, Vector3 normal, Vector3 diffuseColor, bool isPureSpecular, Vector3 specularColor, float specularity, float textureIndex, Vector2 uvPointA, Vector2 uvPointB, Vector2 uvPointC)
         {
             PointA = pointA;
             PointB = pointB;
@@ -70,6 +82,10 @@ namespace INFOGR2024Template.SceneElements
             IsPureSpecular = isPureSpecular;
             SpecularColor = specularColor;
             Specularity = specularity;
+            TextureIndex = textureIndex;
+            UVPointA = uvPointA;
+            UVPointB = uvPointB;
+            UVPointC = uvPointC;
         }
     }
 }

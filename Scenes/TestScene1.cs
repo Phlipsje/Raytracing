@@ -20,7 +20,7 @@ namespace INFOGR2024Template.Scenes
             //Camera = new Camera(new Vector3(0, 1f, -5), new Vector3(0f, 0f, 1f), new Vector3(1f, 0f, 0), 1f, 1.6f, 0.9f);
             PlanePrimitives = new List<Plane>
             {
-                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.DimGray, Color4.LightGray, true, 1f)),
+                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.DimGray, Color4.LightGray, true, 1f), new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
             };
             SpherePrimitives = new List<Sphere>
             {

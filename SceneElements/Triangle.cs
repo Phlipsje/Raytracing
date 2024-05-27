@@ -14,6 +14,10 @@ namespace INFOGR2024Template.SceneElements
         public Vector3 PointA => Center + VectorA;
         public Vector3 PointB => Center + VectorB;
         public Vector3 PointC => Center + VectorC;
+
+        public Vector2 UVPointA => new Vector2(0, 0);
+        public Vector2 UVPointB => new Vector2(1, 0);
+        public Vector2 UVPointC => new Vector2(0.5f, 1);
         public Material Material { get; set; }
 
         /// <summary>

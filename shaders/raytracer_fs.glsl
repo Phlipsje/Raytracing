@@ -5,6 +5,7 @@ const float epsilon = 0.001f;
 const vec3 ambiantLight = vec3(0.1f, 0.1f, 0.1f);
 const vec3 skyColor = vec3(0.5f, 0.6f, 1.0f);
 const int maxBounces = 10;
+const float PI = 3.1415926;
 
 out vec4 outputColor;
 //max 50 lights
@@ -21,6 +22,7 @@ struct Sphere {
 	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
+	float textureIndex;
 };
 struct Plane {
 	vec3 position;
@@ -29,6 +31,9 @@ struct Plane {
 	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
+	float textureIndex;
+	vec3 uVector;
+	vec3 vVector;
 };
 struct Triangle {
 	vec3 pointA;
@@ -39,6 +44,10 @@ struct Triangle {
 	bool isPureSpecular;
 	vec3 specularColor;
 	float specularity;
+	float textureIndex;
+	vec2 uvPointA;
+	vec2 uvPointB;
+	vec2 uvPointC;
 };
 //SSBO for sphere primitives
 layout(binding = 0, std430) readonly buffer ssbo0
@@ -88,6 +97,61 @@ int StackSize()
 {
 	return counter+1;
 }
+
+//------------------------------TEXTURING------------------------------------
+
+float AreaTriangle(vec3 pointA, vec3 pointB, vec3 pointC) { return (length(cross(pointC - pointB, pointA - pointB)))/2;}
+
+vec2 TextureMappingSphere(vec3 intersectionPoint, vec3 sphereCenter, float r)
+{
+	vec3 adjustedIntersection = intersectionPoint - sphereCenter;
+	float theta = acos(adjustedIntersection.z/r);
+	float phi = atan(adjustedIntersection.y, adjustedIntersection.x);
+	return vec2((phi + PI)/(2*PI), theta/PI);
+}
+
+vec2 TextureMappingPlane (vec3 intersectionPoint, vec3 center, vec3 normal, vec3 uVEC, vec3 vVEC)
+{
+	vec3 ajdustedIntersect = intersectionPoint - center;
+	return vec2((dot(ajdustedIntersect, uVEC))/length(uVEC), (dot(ajdustedIntersect, vVEC))/ length(vVEC));
+}
+
+
+vec2 TextureMappingTriangle (vec3 intersectionPoint, vec3 pointA, vec3 pointB, vec3 pointC, vec2 UVa, vec2 UVb, vec2 UVc)
+{
+
+//Ik heb de shading normal er uit gehouden want ik begrijp het punt nog niet.
+
+	float abcArea = AreaTriangle(pointA, pointB, pointC);
+	float alpha = AreaTriangle(intersectionPoint, pointB, pointC)/abcArea;
+	float beta = AreaTriangle(intersectionPoint, pointC, pointA)/abcArea;
+	float gamma = 1 - beta - alpha;
+
+	float u = alpha*UVa.x + beta*UVb.x + gamma*UVc.x;
+	float v = alpha*UVa.y + beta*UVb.y + gamma*UVc.y;
+
+	return vec2(u,v);
+
+}
+//--------------------------------------TEXTURES-------------------------------------
+
+
+vec3 Texturing1 (vec2 uv)
+{
+	int color;
+	color = (int(uv.x) + int(uv.y)) & 1;
+	return vec3(color,color,color);
+}
+
+//------------------------------------TEXTURES----------------------------------------------
+
+vec3 AplieTexture (vec2 uv, float index)
+{
+	if (index == 1){ return Texturing1(uv); }
+	return vec3(0,0,0);
+}
+//------------------------------TEXTURING------------------------------------
+
 
 //first three values of vec4 form the normal vector, last value is the t value
 vec4 IntersectSphere(vec3 rayOrigin, vec3 rayDirection, vec3 center, float radius)
@@ -158,7 +222,7 @@ bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, v
 	return false;
 
 	return true;
-}
+}}
 //Gets the primitives that are useful for the calculation by means of an acceleration structure
 void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[500] trianglePointers)
 {
@@ -238,7 +302,7 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 	}	
 	return false;
 }
-void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal)
+void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal, inout float shapeType, inout float textureIndex, int shapeIndex)
 {
 	int sphereCount;
 	int[] spherePointers;
@@ -262,6 +326,10 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitSpecularity = sphere.specularity;
 			//result.xyz is the normal the IntersectSphere call returned
 			hitNormal = result.xyz;
+
+			shapeType = 1;
+			shapeIndex = i;
+			textureIndex = sphere.textureIndex;
 		}
 	}
 	//intersect with all planes:
@@ -277,6 +345,10 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitSpecularColor = plane.specularColor;
 			hitSpecularity = plane.specularity;
 			hitNormal = plane.normal;
+
+			shapeType = 2;
+			shapeIndex = i;
+			textureIndex = plane.textureIndex;
 		}
 	}
 	//intersect with all relevant triangles
@@ -292,6 +364,10 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			hitSpecularColor = triangle.specularColor;
 			hitSpecularity = triangle.specularity;
 			hitNormal = triangle.normal;
+
+			shapeType = 3;
+			shapeIndex = i;
+			textureIndex = triangle.textureIndex;
 		}
 	}
 }
@@ -322,8 +398,13 @@ void main()
 	//we also need to save the normal for the shading calculations later.
 	vec3 hitNormal = vec3(0, 0, 0);
 
+	float shapeType = 0;
+	float textureIndex = 0;
+	int shapeIndex = -1;
+
 	//Find the closest intersection with all the objects in the scene
-	FindClosestIntersection(rayOrigin, rayDirection, 0, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal);
+	FindClosestIntersection(rayOrigin, rayDirection, 0, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal, shapeType, textureIndex, shapeIndex);
+
 
 	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL (so this is a workaround), this was done before we implemented the stack
 	//value that the final color will be multiplied with, instantiated to be just 1, 1, 1 so it has no effect if no mirrors are used.
@@ -335,6 +416,30 @@ void main()
 	{
 		//determine location/position of the intersection
 		vec3 hitPos = rayOrigin + t * rayDirection;
+
+		if (textureIndex != 0)
+		{
+			vec2 uv = vec2(0, 0);
+			if (shapeType == 1)
+			{uv = TextureMappingSphere(hitPos, spheres[shapeIndex].center, spheres[shapeIndex].radius);}
+			else if (shapeType == 2)
+			{uv = TextureMappingPlane(hitPos,
+									  planes[shapeIndex].position,
+									  planes[shapeIndex].normal,
+									  planes[shapeIndex].uVector,
+									  planes[shapeIndex].vVector);}
+			else if (shapeType == 3)
+			{uv = TextureMappingTriangle(hitPos,
+										 triangles[shapeIndex].pointA,
+										 triangles[shapeIndex].pointB,
+										 triangles[shapeIndex].pointC,
+										 triangles[shapeIndex].uvPointA,
+										 triangles[shapeIndex].uvPointB,
+										 triangles[shapeIndex].uvPointC);}
+
+
+			hitColor = AplieTexture(uv, textureIndex);
+		}
 
 		//calculate diffuse component of lighting on previous found intersection, check for black diffuse first as this calculation is expensive and a lot of mirrors have black diffuse
 		if (hitColor != vec3(0, 0, 0))
