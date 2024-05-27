@@ -1,15 +1,11 @@
 using INFOGR2024Template.SceneElements;
 using INFOGR2024Template.Scenes;
-using INFOGR2024Template;
 using OpenTK.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
-using System;
-using System.Drawing;
-using INFOGR2024Template.SceneElements;
 using System.Runtime.InteropServices;
 
 namespace OpenTK
@@ -20,9 +16,11 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
+
         int uniform_camera, uniform_ligths, uniform_lengths, uniform_time;
-        int ssbo_spheres, ssbo_planes, ssbo_triangles;
+        int ssbo_spheres, ssbo_planes, ssbo_triangles, ssbo_accelerationStructure;
         float time;
+        
         float[] cameraData, lightsData;
         SphereStruct[] spheresData;
         PlaneStruct[] planesData;
@@ -31,11 +29,19 @@ namespace OpenTK
         private Camera camera => scene.Camera;
         private IScene scene;
         private ViewAxis viewAxis = ViewAxis.Topdown;
+        Stopwatch timer = new Stopwatch();
         // constructor
         public RayTracer()
         {
+            timer.Start();
             scene = new TestScene1();
+
             time = 0f;
+
+            timer.Stop();
+            Console.WriteLine("Time to build scene + acceleration structure: " + timer.ElapsedMilliseconds);
+            timer.Reset();
+
         }
         // initialize
         public void Init()
@@ -82,7 +88,7 @@ namespace OpenTK
             uniform_time = GL.GetUniformLocation(programID, "timer");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
-            Debug.WriteLine("ligthsLoc: " + uniform_ligths);
+            Debug.WriteLine("lightsLoc: " + uniform_ligths);
             Debug.WriteLine("max fragment uniform data size: " + GL.GetInteger(GetPName.MaxFragmentUniformComponents));       
 
             //bind buffer for positions
@@ -102,35 +108,21 @@ namespace OpenTK
         // tick: renders one frame
         public void Tick()
         {
+            //Stopwatch stops first and then starts, because otherwise it doesn't take into account the time that the GPU uses to render a frame
+            timer.Stop();
+            Console.WriteLine(timer.ElapsedMilliseconds);
+            timer.Reset();
+            
+            timer.Start();
+            
             ScreenHelper.Clear();
             scene.Tick();
             HandleInput();
-
-            if (InputHelper.keyBoard.IsKeyPressed(Keys.F1))
-            {
-                CameraMode = CameraMode.OpenGL;
-            }
-            if (InputHelper.keyBoard.IsKeyPressed(Keys.F2))
-            {
-                CameraMode = CameraMode.Debug2D;
-            }
             
             switch (CameraMode)
             {
                 case CameraMode.Debug2D:
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D1))
-                        viewAxis = ViewAxis.Topdown;
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
-                        viewAxis = ViewAxis.SideViewXAxis;
-                    if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
-                        viewAxis = ViewAxis.SideViewZAxis;
                     RenderDebug2D();
-                    break;
-                case CameraMode.Debug3D:
-                    RenderDebug3D();
-                    break;
-                case CameraMode.Raytracing:
-                    RenderRaytracer();
                     break;
                 case CameraMode.OpenGL:
                     //in this case actual rendering is handled by RenderGL()
@@ -178,23 +170,28 @@ namespace OpenTK
                     break;
             }
         }
-
-        //This code is copy-pasted 3 times for different axis, because that was the easiest approach
+        
+        ///This code is copy-pasted 3 times for different axis, not because it is good, because that was the easiest approach
         private void RenderDebugTopDown(float viewingRadius, int linesPerCircle, int exampleRayCount)
         {
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
             Vector2 topRightPlane = new Vector2(viewingRadius, viewingRadius);
             
-            //Draw all primitives, drawn first to be drawn under the camera things
+            //Draw all primitives (except planes), drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.Primitives)
+            foreach (var primitive in scene.SpherePrimitives)
             {
-                //Don't draw planes
-                if (primitive.GetType() == typeof(Plane))
-                {
-                    continue;
-                }
-
+                //Check if primitive would be offscreen
+                if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.X < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Z < bottomLeftPlane.Y) continue;
+                
+                //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            foreach (var primitive in scene.TrianglePrimitives)
+            {
                 //Check if primitive would be offscreen
                 if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
                 if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.Y) continue;
@@ -235,8 +232,8 @@ namespace OpenTK
             //Draw a few camera rays
             Vector2 rayStartingPoint = new Vector2(camera.Position.X, camera.Position.Z);
             Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
-            Vector2 leftSideCameraPlane = new Vector2(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Z);
-            Vector2 rightSideCameraPlane = new Vector2(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Z);
+            Vector2 leftSideCameraPlane = new Vector2((camera.TopLeftCameraPlane.X + camera.BottomLeftCameraPlane.X)/2, (camera.TopLeftCameraPlane.Z + camera.BottomLeftCameraPlane.Z)/2);
+            Vector2 rightSideCameraPlane = new Vector2((camera.TopRightCameraPlane.X + camera.BottomRightCameraPlane.X)/2, (camera.TopRightCameraPlane.Z + camera.BottomRightCameraPlane.Z)/2);
             Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
             for (int i = 0; i < exampleRayCount; i++)
             {
@@ -331,11 +328,18 @@ namespace OpenTK
             Vector2i pixelPositionCamera = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos));
 
             //Draw camera plane
-            Vector2 leftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Z);
-            Vector2 rightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Z);
-            Vector2i pixelPosLeftEdge = ScreenHelper.Vector2ToPixel(leftEdgeCameraPlane);
-            Vector2i pixelPosRightEdge = ScreenHelper.Vector2ToPixel(rightEdgeCameraPlane);
-            ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
+            Vector2 topLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Z);
+            Vector2 topRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Z);
+            Vector2 bottomLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Z);
+            Vector2 bottomRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Z);
+            Vector2i pixelPositionBottomLeftEdge = ScreenHelper.Vector2ToPixel(bottomLeftEdgeCameraPlane);
+            Vector2i pixelPosBottomRightEdge = ScreenHelper.Vector2ToPixel(bottomRightEdgeCameraPlane);
+            Vector2i pixelPosTopLeftEdge = ScreenHelper.Vector2ToPixel(topLeftEdgeCameraPlane);
+            Vector2i pixelPosTopRightEdge = ScreenHelper.Vector2ToPixel(topRightEdgeCameraPlane);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosBottomRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosTopLeftEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopLeftEdge, pixelPosTopRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopRightEdge, pixelPosBottomRightEdge, Color4.White);
             
             //Draw camera angles
             Vector2 viewDirection = new Vector2(camera.ViewDirection.X, camera.ViewDirection.Z).Normalized();
@@ -423,21 +427,27 @@ namespace OpenTK
             }
         }
         
+        ///This code is copy-pasted 3 times for different axis, not because it is good, because that was the easiest approach
         private void RenderDebugSideXAxis(float viewingRadius, int linesPerCircle, int exampleRayCount)
         {
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
             Vector2 topRightPlane = new Vector2(viewingRadius, viewingRadius);
             
-            //Draw all primitives, drawn first to be drawn under the camera things
+            //Draw all primitives (except planes), drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.Primitives)
+            foreach (var primitive in scene.SpherePrimitives)
             {
-                //Don't draw planes
-                if (primitive.GetType() == typeof(Plane))
-                {
-                    continue;
-                }
-
+                //Check if primitive would be offscreen
+                if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.Z < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Y < bottomLeftPlane.Y) continue;
+                
+                //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            foreach (var primitive in scene.TrianglePrimitives)
+            {
                 //Check if primitive would be offscreen
                 if (primitive.BoundingBox.MinimumValues.Z > topRightPlane.X) continue;
                 if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
@@ -478,8 +488,8 @@ namespace OpenTK
             //Draw a few camera rays
             Vector2 rayStartingPoint = new Vector2(camera.Position.Z, camera.Position.Y);
             Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
-            Vector2 leftSideCameraPlane = new Vector2(camera.BottomLeftCameraPlane.Z, camera.BottomLeftCameraPlane.Y);
-            Vector2 rightSideCameraPlane = new Vector2(camera.TopLeftCameraPlane.Z, camera.TopLeftCameraPlane.Y);
+            Vector2 leftSideCameraPlane = new Vector2((camera.TopLeftCameraPlane.Z + camera.BottomLeftCameraPlane.Z)/2, (camera.TopLeftCameraPlane.Y + camera.BottomLeftCameraPlane.Y)/2);
+            Vector2 rightSideCameraPlane = new Vector2((camera.TopRightCameraPlane.Z + camera.BottomRightCameraPlane.Z)/2, (camera.TopRightCameraPlane.Y + camera.BottomRightCameraPlane.Y)/2);
             Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
             for (int i = 0; i < exampleRayCount; i++)
             {
@@ -574,11 +584,18 @@ namespace OpenTK
             Vector2i pixelPositionCamera = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos));
 
             //Draw camera plane
-            Vector2 leftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.Z, camera.BottomLeftCameraPlane.Y);
-            Vector2 rightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.Z, camera.TopLeftCameraPlane.Y);
-            Vector2i pixelPosLeftEdge = ScreenHelper.Vector2ToPixel(leftEdgeCameraPlane);
-            Vector2i pixelPosRightEdge = ScreenHelper.Vector2ToPixel(rightEdgeCameraPlane);
-            ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
+            Vector2 topLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.Z, camera.TopLeftCameraPlane.Y);
+            Vector2 topRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.Z, camera.TopRightCameraPlane.Y);
+            Vector2 bottomLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.Z, camera.BottomLeftCameraPlane.Y);
+            Vector2 bottomRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.Z, camera.BottomRightCameraPlane.Y);
+            Vector2i pixelPositionBottomLeftEdge = ScreenHelper.Vector2ToPixel(bottomLeftEdgeCameraPlane);
+            Vector2i pixelPosBottomRightEdge = ScreenHelper.Vector2ToPixel(bottomRightEdgeCameraPlane);
+            Vector2i pixelPosTopLeftEdge = ScreenHelper.Vector2ToPixel(topLeftEdgeCameraPlane);
+            Vector2i pixelPosTopRightEdge = ScreenHelper.Vector2ToPixel(topRightEdgeCameraPlane);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosBottomRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosTopLeftEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopLeftEdge, pixelPosTopRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopRightEdge, pixelPosBottomRightEdge, Color4.White);
             
             //Draw camera angles
             Vector2 viewDirection = new Vector2(camera.ViewDirection.Z, camera.ViewDirection.Y).Normalized();
@@ -666,21 +683,27 @@ namespace OpenTK
             }
         }
         
+        ///This code is copy-pasted 3 times for different axis, not because it is good, because that was the easiest approach
         private void RenderDebugSideZAxis(float viewingRadius, int linesPerCircle, int exampleRayCount)
         {
             Vector2 bottomLeftPlane = new Vector2(-viewingRadius, -viewingRadius);
             Vector2 topRightPlane = new Vector2(viewingRadius, viewingRadius);
             
-            //Draw all primitives, drawn first to be drawn under the camera things
+            //Draw all primitives (except planes), drawn first to be drawn under the camera things
             List<IPrimitive> primitivesToDraw = new List<IPrimitive>();
-            foreach (var primitive in scene.Primitives)
+            foreach (var primitive in scene.SpherePrimitives)
             {
-                //Don't draw planes
-                if (primitive.GetType() == typeof(Plane))
-                {
-                    continue;
-                }
-
+                //Check if primitive would be offscreen
+                if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
+                if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
+                if (primitive.BoundingBox.MaximumValues.X < bottomLeftPlane.X) continue;
+                if (primitive.BoundingBox.MaximumValues.Y < bottomLeftPlane.Y) continue;
+                
+                //If even slightly onscreen, just draw the entire primitive
+                primitivesToDraw.Add(primitive);
+            }
+            foreach (var primitive in scene.TrianglePrimitives)
+            {
                 //Check if primitive would be offscreen
                 if (primitive.BoundingBox.MinimumValues.X > topRightPlane.X) continue;
                 if (primitive.BoundingBox.MinimumValues.Y > topRightPlane.Y) continue;
@@ -721,8 +744,8 @@ namespace OpenTK
             //Draw a few camera rays
             Vector2 rayStartingPoint = new Vector2(camera.Position.X, camera.Position.Y);
             Vector2i pixelPositionRayStart = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(rayStartingPoint));
-            Vector2 leftSideCameraPlane = new Vector2(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Y);
-            Vector2 rightSideCameraPlane = new Vector2(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Y);
+            Vector2 leftSideCameraPlane = new Vector2((camera.TopLeftCameraPlane.X + camera.BottomLeftCameraPlane.X)/2, (camera.TopLeftCameraPlane.Y + camera.BottomLeftCameraPlane.Y)/2);
+            Vector2 rightSideCameraPlane = new Vector2((camera.TopRightCameraPlane.X + camera.BottomRightCameraPlane.X)/2, (camera.TopRightCameraPlane.Y + camera.BottomRightCameraPlane.Y)/2);
             Vector2 increment = (rightSideCameraPlane - leftSideCameraPlane) / (exampleRayCount - 1);
             for (int i = 0; i < exampleRayCount; i++)
             {
@@ -817,11 +840,18 @@ namespace OpenTK
             Vector2i pixelPositionCamera = ScreenHelper.Vector2ToPixel(ScaleToBaseVectorByGivenPlane(cameraPos));
 
             //Draw camera plane
-            Vector2 leftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Y);
-            Vector2 rightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Y);
-            Vector2i pixelPosLeftEdge = ScreenHelper.Vector2ToPixel(leftEdgeCameraPlane);
-            Vector2i pixelPosRightEdge = ScreenHelper.Vector2ToPixel(rightEdgeCameraPlane);
-            ScreenHelper.DrawLine(pixelPosLeftEdge, pixelPosRightEdge, Color4.White);
+            Vector2 topLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopLeftCameraPlane.X, camera.TopLeftCameraPlane.Y);
+            Vector2 topRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.TopRightCameraPlane.X, camera.TopRightCameraPlane.Y);
+            Vector2 bottomLeftEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomLeftCameraPlane.X, camera.BottomLeftCameraPlane.Y);
+            Vector2 bottomRightEdgeCameraPlane = ScaleToBaseFloatsByGivenPlane(camera.BottomRightCameraPlane.X, camera.BottomRightCameraPlane.Y);
+            Vector2i pixelPositionBottomLeftEdge = ScreenHelper.Vector2ToPixel(bottomLeftEdgeCameraPlane);
+            Vector2i pixelPosBottomRightEdge = ScreenHelper.Vector2ToPixel(bottomRightEdgeCameraPlane);
+            Vector2i pixelPosTopLeftEdge = ScreenHelper.Vector2ToPixel(topLeftEdgeCameraPlane);
+            Vector2i pixelPosTopRightEdge = ScreenHelper.Vector2ToPixel(topRightEdgeCameraPlane);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosBottomRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPositionBottomLeftEdge, pixelPosTopLeftEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopLeftEdge, pixelPosTopRightEdge, Color4.White);
+            ScreenHelper.DrawLine(pixelPosTopRightEdge, pixelPosBottomRightEdge, Color4.White);
             
             //Draw camera angles
             Vector2 viewDirection = new Vector2(camera.ViewDirection.X, camera.ViewDirection.Y).Normalized();
@@ -918,95 +948,6 @@ namespace OpenTK
         }
         #endregion
 
-        #region Debug3D
-        private void RenderDebug3D()
-        {
-            int width = ScreenHelper.screen.width;
-            int height = ScreenHelper.screen.height;
-            Camera camera = scene.Camera;
-            //for every pixel
-            for (int x = 0; x < width; x++) 
-            {
-                for(int y = 0; y < height; y++)
-                {
-                    //make ray from camera through the plane in the correct spot
-                    Vector3 bottomLeft = camera.BottomLeftCameraPlane;
-                    Vector3 bottomRight = camera.BottomRightCameraPlane;
-                    Vector3 topLeft = camera.TopLeftCameraPlane;
-                    Vector3 planePos = bottomLeft + ((float)x/width) * (bottomRight - bottomLeft) + ((float)y/height) * (topLeft - bottomLeft);
-                    Vector3 direction = planePos - camera.Position;
-                    Ray viewRay = new Ray(camera.Position, direction);
-
-                    //for every object in the scene
-                    for(int i = 0; i < scene.Primitives.Count; i++) 
-                    {
-                        //Check for intersection and if the object is the closest hit object so far, store the distance and color
-                        Tuple<float, Material> tuple = scene.Primitives[i].RayIntersect(viewRay);
-                        if(tuple.Item1 > 0 && (tuple.Item1 < viewRay.T || viewRay.T == float.MinValue))
-                        {
-                            viewRay.T = tuple.Item1;
-                            viewRay.Color = tuple.Item2.DiffuseColor;
-                        }
-                    }
-                    //The ray didn't hit so the rest can be skipped
-                    if (viewRay.T < 0f)
-                        continue;
-                    //if there are no point lights in the scene, immediately return the color without lighting
-                    if (scene.PointLights.Count == 0)
-                    {
-                        ScreenHelper.SetPixel(x, y, viewRay.Color);
-                        continue;
-                    }
-
-                    //the illumination of the current pixel
-                    float illumination = 0f;
-                    //the intensity of each point light
-                    float lightIntensity = 1f / scene.PointLights.Count;
-                    Vector3 hitPos = viewRay.Origin + viewRay.Direction * viewRay.T;
-                    //for each light
-                    for (int l = 0; l < scene.PointLights.Count; l++)
-                    {
-                        Vector3 lightPos = scene.PointLights[l].Position;
-                        float distanceToLight = (lightPos - hitPos).Length;
-                        Ray shadowRay = new Ray(hitPos, lightPos - hitPos);  
-                        //for each object
-                        for (int p = 0; p < scene.Primitives.Count; p++)
-                        {
-                            //check if it is between the lamp and the light
-                            Tuple<float, Material> tuple = scene.Primitives[p].RayIntersect(shadowRay);
-                            if (tuple.Item1 > 0.001f && tuple.Item1 < distanceToLight)
-                            {
-                                shadowRay.T = tuple.Item1;
-                                break;
-                            }
-                        }
-                        //if no objects were between the lamp and the light
-                        if (shadowRay.T < 0f)
-                        {
-                            //add the lamps 'intensity' to the light
-                            illumination += lightIntensity;
-                        }
-                    }
-                    //if there is illumanition 
-                    if (illumination > 0f)
-                    {
-                        Color4 c = viewRay.Color;
-                        //draw the color adjusted by illumination to the screen
-                        ScreenHelper.SetPixel(x, y, new Color4(c.R * illumination, c.G * illumination, c.B * illumination, 1f));
-                    }
-                }
-            }
-            Debug.WriteLine("frame finished");
-        }
-        #endregion
-
-        #region Raytracer
-        private void RenderRaytracer()
-        {
-            
-        }
-        #endregion
-
         #region OpenGL stuff
         private void PrepareRenderOpenGL()
         {
@@ -1031,65 +972,40 @@ namespace OpenTK
             int maxLights = 50;
 
             //fill float arrays for primitives data
-            List<IPrimitive> primitives = scene.Primitives;
-            int spheresAmount = 0;
-            int planesAmount = 0;
-            int trianglesAmount = 0;
-            for (int i = 0; i < primitives.Count; i++)
-            {
-                if (primitives[i] is Sphere)
-                    spheresAmount++;
-                else if (primitives[i] is Plane)
-                    planesAmount++;
-                else
-                    trianglesAmount++;
-            }
 
-            spheresData = new SphereStruct[spheresAmount];
-            planesData = new PlaneStruct[planesAmount];
-            trianglesData = new TriangleStruct[trianglesAmount];
+            planesData = new PlaneStruct[scene.PlanePrimitives.Count];
+            spheresData = new SphereStruct[scene.SpherePrimitives.Count];
+            trianglesData = new TriangleStruct[scene.TrianglePrimitives.Count];
+
 
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
 
-            for (int i = 0; i < primitives.Count; i++)
+            foreach (Plane plane in scene.PlanePrimitives)
             {
-                IPrimitive primitive = primitives[i];
-                if (primitive is Sphere)
-                {
-                    Sphere sphere = (Sphere)primitive;
-                    Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
-                    spheresData[sphereCounter] = new SphereStruct(
-                            sphere.Center, sphere.Radius,
-                            diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth,
-                            sphere.Material.TextureIndex);
-                    sphereCounter++;
-                }
-                else if (primitive is Plane)
-                {
-                    Plane plane = (Plane)primitive;
-                    Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
-                    planesData[planesCounter] = new PlaneStruct(
-                            plane.Center, plane.Normal, diffuseColor,
-                            plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth,
-                            plane.Material.TextureIndex, plane.UVector, plane.VVector);
-                    planesCounter++;
-                }
-                else
-                {
-                    Triangle triangle = (Triangle)primitive;
-                    Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
-                    Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
-                    trianglesData[trianglesCounter] = new TriangleStruct(
-                            triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal,
-                            diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth,
-                            triangle.Material.TextureIndex, triangle.UVPointA, triangle.UVPointB, triangle.UVPointC);
-                    trianglesCounter++;
-                }
+                Vector3 diffuseColor = new Vector3(plane.Material.DiffuseColor.R, plane.Material.DiffuseColor.G, plane.Material.DiffuseColor.B);
+                Vector3 specularColor = new Vector3(plane.Material.SpecularColor.R, plane.Material.SpecularColor.G, plane.Material.SpecularColor.B);
+                planesData[planesCounter] = new PlaneStruct(plane.Center, plane.Normal, diffuseColor, plane.Material.IsPureSpecular, specularColor, plane.Material.SpecularWidth, plane.Material.TextureIndex, plane.UVector, plane.VVector);
+                planesCounter++;
+
             }
+            foreach (Sphere sphere in scene.SpherePrimitives)
+            {
+                Vector3 diffuseColor = new Vector3(sphere.Material.DiffuseColor.R, sphere.Material.DiffuseColor.G, sphere.Material.DiffuseColor.B);
+                Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
+                spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth, sphere.Material.TextureIndex);
+                sphereCounter++;
+            }
+            foreach (Triangle triangle in scene.TrianglePrimitives)
+            {
+                Vector3 diffuseColor = new Vector3(triangle.Material.DiffuseColor.R, triangle.Material.DiffuseColor.G, triangle.Material.DiffuseColor.B);
+                Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
+                trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth, triangle.Material.TextureIndex, triangle.UVPointA, triangle.UVPointB, triangle.UVPointC);
+                trianglesCounter++;
+            }
+            if(scene.PointLights.Count > maxLights)
+                Console.WriteLine("Warning: scene light count exceeds maximum! Some lights won't be calculated!");
             int lightsAmount = Math.Min(maxLights, scene.PointLights.Count);
             lightsData = new float[lightsAmount * 6];
             for (int i = 0; i < lightsAmount; i++)
@@ -1103,9 +1019,11 @@ namespace OpenTK
                 lightsData[4 + offset] = scene.PointLights[i].Intensity.G;
                 lightsData[5 + offset] = scene.PointLights[i].Intensity.B;
             }
-                int[] lengths = new int[]
+            int[] lengths = new int[]
             {
-                sphereCounter * Marshal.SizeOf<SphereStruct>()/sizeof(float), planesAmount * Marshal.SizeOf<PlaneStruct>()/sizeof(float), trianglesAmount * Marshal.SizeOf<TriangleStruct>()/sizeof(float), lightsData.Length
+
+                sphereCounter * 11, scene.PlanePrimitives.Count * 13, scene.TrianglePrimitives.Count * 19, lightsData.Length
+
             };
             //send the primitives data to the shader
             GL.UseProgram(programID);
@@ -1120,7 +1038,7 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, spheresData.Length * Marshal.SizeOf<SphereStruct>(), spheresData, BufferUsageHint.StaticRead);
 
-            //bind buffer for the planes buffer ssbo0 
+            //bind buffer for the planes buffer ssbo1
             ssbo_planes = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_planes);
             //not sure about the order of last two lines
@@ -1128,13 +1046,21 @@ namespace OpenTK
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, planesData.Length * Marshal.SizeOf<PlaneStruct>(), planesData, BufferUsageHint.StaticRead);
 
-            //bind buffer for the triangles buffer ssbo0 
+            //bind buffer for the triangles buffer ssbo2
             ssbo_triangles = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_triangles);
             //not sure about the order of last two lines
             GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 2, ssbo_triangles);
             //not sure about the buffer usage hint here
             GL.BufferData(BufferTarget.ShaderStorageBuffer, trianglesData.Length * Marshal.SizeOf<TriangleStruct>(), trianglesData, BufferUsageHint.StaticRead);
+            
+            //bind buffer for the acceleration structure buffer ssbo3
+            ssbo_accelerationStructure = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo_accelerationStructure);
+            //not sure about the order of last two lines
+            GL.BindBufferBase(BufferTarget.ShaderStorageBuffer, 3, ssbo_accelerationStructure);
+            //not sure about the buffer usage hint here
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, scene.AccelerationStructureData.Length*4, scene.AccelerationStructureData, BufferUsageHint.StaticRead);
         }   
         private void LoadShader(String name, ShaderType type, int program, out int ID)
         {
@@ -1208,10 +1134,23 @@ namespace OpenTK
                 camera.Position += moveDirection.Normalized() * speed * delta;
 
             //switching rendering
-            if (InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D4))
-                CameraMode = CameraMode.Debug3D;
-            else if(InputHelper.keyBoard.IsKeyDown(Windowing.GraphicsLibraryFramework.Keys.D5))
+            if(InputHelper.keyBoard.IsKeyPressed(Keys.D1))
                 CameraMode = CameraMode.OpenGL;
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D2))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.Topdown;
+            }
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D3))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.SideViewXAxis;
+            }
+            else if (InputHelper.keyBoard.IsKeyPressed(Keys.D4))
+            {
+                CameraMode = CameraMode.Debug2D;
+                viewAxis = ViewAxis.SideViewZAxis;
+            }
         }
     }
 
@@ -1219,7 +1158,6 @@ namespace OpenTK
     {
         Debug2D,
         Debug3D,
-        Raytracing,
         OpenGL
     }
 }

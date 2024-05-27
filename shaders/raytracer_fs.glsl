@@ -66,6 +66,39 @@ layout(binding = 2, std430) readonly buffer ssbo2
 {
 	Triangle triangles[];
 };
+//SSBO for the acceleration structure (in this case an R-Tree)
+layout(binding = 3, std430) readonly buffer ssbo3
+{
+	float accStruct[]; //Short for acceleration structure
+};
+
+//Used to implement recursion
+//Note, is static size and doesn't check size, choosing a low value can cause the array to be exceeded and then you get memory leaks
+const int stackSize = 100; //Used for stack
+int counter = -1; //Used for stack
+int[stackSize] stackPointers;
+
+//Add to end of stack
+void StackPush(int value)
+{
+	//First increments the counter, then adds the value
+	stackPointers[++counter] = value;
+}
+//Remove from stack
+int StackPop()
+{
+	//Returns the value, then decrements the value
+	return stackPointers[counter--];
+}
+//Empty the stack
+void StackClear()
+{
+	counter = -1;
+}
+int StackSize()
+{
+	return counter+1;
+}
 
 //------------------------------TEXTURING------------------------------------
 
@@ -103,13 +136,7 @@ vec2 TextureMappingTriangle (vec3 intersectionPoint, vec3 pointA, vec3 pointB, v
 
 }
 //--------------------------------------TEXTURES-------------------------------------
-mat2 rotate(float angle)
-{
-	float c = cos(angle);
-	float s = sin(angle);
 
-	return mat2(c, -s, s, c);
-}
 
 vec3 Texturing1 (vec2 uv)
 {
@@ -170,12 +197,88 @@ float IntersectTriangle(vec3 rayOrigin, vec3 rayDirection, vec3 pointA, vec3 poi
 		return -1;
 	return t;
 }
+//This is a more compact form of the slab method mentioned in the slide, 
+//original code can be found here: https://tavianator.com/2011/ray_box.html
+bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, vec3 maxValuesBB)
+{
+	float txmin, txmax, tymin, tymax, tzmin, tzmax;
+	vec3 rayInverse = 1 / rayDirection;
+	vec3[] bounds = {minValuesBB, maxValuesBB};
+	bool[] raySign = {rayInverse.x < 0, rayInverse.y < 0, rayInverse.z < 0};
+
+	txmin = (bounds[int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
+	txmax = (bounds[1-int(raySign[0])].x - rayOrigin.x) * rayInverse.x;
+	tymin = (bounds[int(raySign[1])].y - rayOrigin.y) * rayInverse.y;
+	tymax = (bounds[1-int(raySign[1])].y - rayOrigin.y) * rayInverse.y;
+
+	if ((txmin > tymax) || (tymin > txmax))
+	return false;
+
+	if (tymin > txmin)
+	txmin = tymin;
+	if (tymax < txmax)
+	txmax = tymax;
+
+	tzmin = (bounds[int(raySign[2])].z - rayOrigin.z) * rayInverse.z;
+	tzmax = (bounds[1-int(raySign[2])].z - rayOrigin.z) * rayInverse.z;
+
+	if ((txmin > tzmax) || (tzmin > txmax))
+	return false;
+
+	return true;
+}
+//Gets the primitives that are useful for the calculation by means of an acceleration structure
+void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[500] trianglePointers)
+{
+	//Start using bounding box
+	StackClear(); //Clear just to be certain, but shouldn't be necessary in theory
+	StackPush(0); //Push the start of the acceleration structure to the stack
+	int pos; //Position in the acceleration structure
+	while(StackSize() > 0)
+	{
+		pos = StackPop();
+		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection,
+										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]),
+										vec3(accStruct[pos+3], accStruct[pos+4], accStruct[pos+5]));
+		if(!hit)
+			continue;
+
+		//Get the amount of values stored in the bounding box
+		int count = int(accStruct[pos+7]);
+		if(accStruct[pos+6] == 0) //If it is a branch
+		{
+			//Add all branches to check to stack
+			for (int i = 0; i < count; i++) {
+				StackPush(pos + int(accStruct[pos+8+i]));
+			}
+		}
+		else //It is a leaf
+		{
+			for (int i = 0; i < count; i++) {
+				//Add all primitives in it to the list to check
+				int value = int(accStruct[pos+8+i]);
+				if(value >= spheres.length()) //See if it is a sphere or triangle
+				{trianglePointers[triangleCount] = value - spheres.length(); triangleCount++;}
+				else
+				{spherePointers[sphereCount] = value; sphereCount++;}
+			}
+		}
+	}
+}
+
+
 bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in vec3 shadowRayDirection)
 {
-	//Check all spheres in the scene for an intersection
-	for (int i = 0; i < spheres.length(); i++)
+	int sphereCount;
+	int[] spherePointers;
+	int triangleCount;
+	int[] trianglePointers;
+	GetRelevantPrimitives(shadowRayOrigin, shadowRayDirection, sphereCount, spherePointers, triangleCount, trianglePointers);
+		
+	//Check all relevant spheres in the scene for an intersection
+	for (int i = 0; i < sphereCount; i++)
 	{
-		Sphere sphere = spheres[i];
+		Sphere sphere = spheres[spherePointers[i]];
 		//we only care about the w component (the distance) of the result.
 		float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
 		if (result > epsilon && result < distanceToLight)
@@ -193,10 +296,10 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 			return true;
 		}
 	}
-	//Check all triangles in the scene for an intersection
-	for (int i = 0; i < triangles.length(); i++)
+	//Check all relevant triangles in the scene for an intersection
+	for (int i = 0; i < triangleCount; i++)
 	{
-		Triangle triangle = triangles[i];
+		Triangle triangle = triangles[trianglePointers[i]];
 		float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 		if (result > epsilon && result < distanceToLight)
 		{
@@ -209,11 +312,17 @@ bool ObjectInWayOfLight(in float distanceToLight, in vec3 shadowRayOrigin, in ve
 
 void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, inout float t, inout vec3 hitColor, inout bool hitPureSpecular, inout vec3 hitSpecularColor, inout float hitSpecularity, inout vec3 hitNormal, inout float shapeType, inout float textureIndex, int shapeIndex)
 {
-	//intersect with all spheres:
-	for (int i = 0; i < spheres.length(); i++)
+	int sphereCount;
+	int[] spherePointers;
+	int triangleCount;
+	int[] trianglePointers;
+	GetRelevantPrimitives(rayOrigin, rayDirection, sphereCount, spherePointers, triangleCount, trianglePointers);
+	
+	//intersect with all relevant spheres:
+	for (int i = 0; i < sphereCount; i++)
 	{
 		//sphere is the current sphere being looked at
-		Sphere sphere = spheres[i];
+		Sphere sphere = spheres[spherePointers[i]];
 		vec4 result = IntersectSphere(rayOrigin, rayDirection, sphere.center, sphere.radius);
 		if (result.w > minDistance && result.w < t)
 		{
@@ -250,10 +359,10 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 			textureIndex = plane.textureIndex;
 		}
 	}
-	//intersect with all triangles
-	for (int i = 0; i < triangles.length(); i++)
+	//intersect with all relevant triangles
+	for (int i = 0; i < triangleCount; i++)
 	{
-		Triangle triangle = triangles[i];
+		Triangle triangle = triangles[trianglePointers[i]];
 		float result = IntersectTriangle(rayOrigin, rayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
 		if (result > minDistance && result < t)
 		{
@@ -308,7 +417,7 @@ void main()
 	//Find the closest intersection with all the objects in the scene
 	FindClosestIntersection(rayOrigin, rayDirection, 0, t, hitColor, hitPureSpecular, hitSpecularColor, hitSpecularity, hitNormal, shapeType, textureIndex, shapeIndex);
 
-	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL
+	//FOLLOWING SECTION: Pure specular implementation, NOTE THAT RECURSION IS NOT POSSIBLE IN GLSL (so this is a workaround), this was done before we implemented the stack
 	//value that the final color will be multiplied with, instantiated to be just 1, 1, 1 so it has no effect if no mirrors are used.
 	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
 	vec3 finalColor = vec3(0, 0, 0);

@@ -1,8 +1,6 @@
 ﻿using OpenTK.SceneElements;
 using INFOGR2024Template.Helper_classes;
 using INFOGR2024Template.SceneElements;
-using OpenTK.Mathematics;
-using INFOGR2024Template.SceneElements;
 
 namespace INFOGR2024Template.Scenes
 {
@@ -11,7 +9,9 @@ namespace INFOGR2024Template.Scenes
     /// </summary>
     public interface IScene
     {
-        public List<IPrimitive> Primitives { get; set; }
+        public List<Plane> PlanePrimitives { get; set; }
+        public List<Sphere> SpherePrimitives { get; set; }
+        public List<Triangle> TrianglePrimitives { get; set; }
         public List<PointLight> PointLights { get; set; }
         public Camera Camera { get; set; }
         public RTree AccelerationStructure { get; protected set; }
@@ -23,11 +23,15 @@ namespace INFOGR2024Template.Scenes
         {
             AccelerationStructure = new RTree(this);
             
-            for (int i = 0; i < Primitives.Count; i++)
+            //Planes aren't added to the data structure, because they are infinitely large
+            for (int i = 0; i < SpherePrimitives.Count; i++)
             {
-                //Planes aren't added to the data structure, because they are infinitely large
-                if(Primitives[i].GetType() != typeof(Plane))
-                    AccelerationStructure.AddPrimitive(i);
+                AccelerationStructure.AddPrimitive(i);
+            }
+            for (int i = 0; i < TrianglePrimitives.Count; i++)
+            {
+                //Add on the count of sphere primitives to be able to see what is a sphere and what a triangle
+                AccelerationStructure.AddPrimitive(i + SpherePrimitives.Count);
             }
 
             AccelerationStructureData = AccelerationStructure.TurnIntoFloatArray();

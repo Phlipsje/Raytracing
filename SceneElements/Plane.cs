@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using INFOGR2024Template.Helper_classes;
+﻿using INFOGR2024Template.Helper_classes;
 using OpenTK.Mathematics;
 using OpenTK.SceneElements;
 
 namespace INFOGR2024Template.SceneElements
 {
-    internal class Plane : IPrimitive
+    public class Plane : IPrimitive
     {
         public Vector3 Center { get; set; }
         public Vector3 Normal { get; set; }
