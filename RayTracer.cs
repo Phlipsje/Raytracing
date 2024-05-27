@@ -1134,6 +1134,8 @@ namespace OpenTK
             GL.UseProgram(programID);
             GL.Uniform1(uniform_ligths, lightsData.Length, lightsData);
             GL.Uniform1(uniform_lengths, lengths.Length, lengths);
+            GL.Uniform1(uniform_sphereLights, sphereLightPointers.Length, sphereLightPointers);
+            GL.Uniform1(uniform_triangleLights, triangleLightPointers.Length, triangleLightPointers);
 
             //bind buffer for the spheres buffer ssbo0 
             ssbo_spheres = GL.GenBuffer();

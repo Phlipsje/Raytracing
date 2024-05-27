@@ -12,7 +12,7 @@ const int maxBounces = 10;
 const float pi = 3.1415927;
 
 //this will be squared, so setting this value to 3 will result in 9 samples. This value will make the ray tracer n^2 times slower btw
-const int antiAliasingSamplesRoot = 3;
+const int antiAliasingSamplesRoot = 2;
 const int pathTracingBounces = 2;
 
 //Value increments so you get a different random number each time you pull one within the same frame
@@ -82,22 +82,7 @@ layout(binding = 3, std430) restrict buffer ssbo3
 {
 	vec4 lastScreen[];
 };
-//alternative functions for generating pseudo random numbers, might be good enough, needs testing with pathfinding implementation. 
-//These function are less random and seem to form quite a lot of patterns after some time but they are computationally way cheaper.
-vec2 hash22(vec2 p)
-{
-	vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
-	p3 += dot(p3, p3.yzx+33.33);
-	return fract((p3.xx+p3.yz)*p3.zy);
-
-}
-vec3 hash32(vec2 p)
-{
-	vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
-	p3 += dot(p3, p3.yxz+33.33);
-	return fract((p3.xxy+p3.yzz)*p3.zyx);
-}
-//random number generator(actually encryption algorithm found)
+//random number generator(actually encryption algorithm)
 //after testing seems to be fairly random, with some small patterns appearing after some time, but nothing major
 //setup
 vec2 RandomNumber(float offset)
@@ -116,17 +101,6 @@ vec2 RandomNumber(float offset)
 	float y = v.y / 4294967295.0f;
 	return vec2(x, y);
 	randomsUsed++;
-}
-//not finished, don't know how to complete it yet
-vec3 RandomDirection(in vec3 normal, in float maxAngle)
-{
-	vec2 randoms = RandomNumber(0.0f);
-	float theta = randoms.x * pi - 0.5f * pi;
-	float phi = randoms.y * 2 * pi;
-	float sinOfTheta = sin(theta);
-	vec3 randomVecInHemisphere = vec3(sinOfTheta * cos(phi), cos(theta), sinOfTheta * sin(phi));
-	//do stuff
-	return randomVecInHemisphere;
 }
 //need to find a way to quickly generate 3 random numbers without wasting two computations
 vec3 RandomDirection(in vec3 normal)
@@ -186,7 +160,7 @@ bool ObjectInWayOfLight(in float distanceToLightSquared, in vec3 shadowRayOrigin
 		Sphere sphere = spheres[i];
 		//we only care about the w component (the distance) of the result.
 		float result = IntersectSphere(shadowRayOrigin, shadowRayDirection, sphere.center, sphere.radius).w;
-		if (result > epsilon && result * result < distanceToLightSquared)
+		if (result > epsilon && result * result < distanceToLightSquared - epsilon)
 		{
 			return true;
 		}
@@ -196,7 +170,7 @@ bool ObjectInWayOfLight(in float distanceToLightSquared, in vec3 shadowRayOrigin
 	{
 		Plane plane = planes[i];
 		float result = IntersectPlane(shadowRayOrigin, shadowRayDirection, plane.position, plane.normal);
-		if (result > epsilon && result * result < distanceToLightSquared)
+		if (result > epsilon && result * result < distanceToLightSquared - epsilon)
 		{
 			return true;
 		}
@@ -206,7 +180,7 @@ bool ObjectInWayOfLight(in float distanceToLightSquared, in vec3 shadowRayOrigin
 	{
 		Triangle triangle = triangles[i];
 		float result = IntersectTriangle(shadowRayOrigin, shadowRayDirection, triangle.pointA, triangle.pointB, triangle.pointC, triangle.normal);
-		if (result > epsilon && result * result < distanceToLightSquared)
+		if (result > epsilon && result * result < distanceToLightSquared - epsilon)
 		{
 			return true;
 		}
@@ -267,6 +241,34 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 		}
 	}
 }
+vec3 ContributionOfSingleLight(in vec3 lightPos, in vec3 lightColor, in vec3 hitColor, in vec3 hitPos, inout vec3 hitNormal, vec3 rayDirection, vec3 hitSpecularColor, float hitSpecularity, vec3 hitEmissionColor)
+{
+	vec3 vectorToLight = lightPos - hitPos;
+	float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
+	vec3 shadowRayOrigin = hitPos;
+	vec3 shadowRayDirection = normalize(lightPos - hitPos);
+	//make sure normal is right way around
+	if (dot(hitNormal, rayDirection) > 0.0f)
+		hitNormal = -hitNormal;
+	//skip light if on wrong side of object
+	if(dot(hitNormal, shadowRayDirection) < 0.0f)
+		return vec3(0, 0, 0);
+	//if no objects were in the way of the light, add the appropriate lighting to it.
+	if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
+	{
+		if(hitSpecularColor == vec3(0, 0, 0))
+		{
+			//formula for diffuse component
+			return (lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection))) / distanceToLightSquared;
+		}
+		else
+		{
+			vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
+			//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
+			return (lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity))) / distanceToLightSquared;
+		}
+	}
+}
 vec3 DetermineLighting(in vec3 hitColor, in vec3 hitPos, inout vec3 hitNormal, vec3 rayDirection, vec3 hitSpecularColor, float hitSpecularity, vec3 hitEmissionColor)
 {
 	vec3 combinedColor = vec3(hitColor * ambiantLight + hitEmissionColor);
@@ -274,46 +276,40 @@ vec3 DetermineLighting(in vec3 hitColor, in vec3 hitPos, inout vec3 hitNormal, v
 	for (int l = 0; l < lengths[2]; l += 6)
 	{
 		vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
-		vec3 vectorToLight = lightPos - hitPos;
-		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
-		vec3 shadowRayOrigin = hitPos;
-		vec3 shadowRayDirection = normalize(lightPos - hitPos);
-		//make sure normal is right way around
-		if (dot(hitNormal, rayDirection) > 0.0f)
-			hitNormal = -hitNormal;
-		//skip light if on wrong side of object
-		if(dot(hitNormal, shadowRayDirection) < 0.0f)
-			continue;
-		//if no objects were in the way of the light, add the appropriate lighting to it.
-		if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
-		{
-			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
-			if(hitSpecularColor == vec3(0, 0, 0))
-			{
-				//formula for diffuse component
-				combinedColor += (lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection))) / distanceToLightSquared;
-			}
-			else
-			{
-				vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
-				//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
-				combinedColor += (lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity))) / distanceToLightSquared;
-			}
-		}
+		vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
+		combinedColor += ContributionOfSingleLight(lightPos, lightColor, hitColor, hitPos, hitNormal, rayDirection, hitSpecularColor, hitSpecularity, hitEmissionColor);
 	}
 	//determine lighting for all sphere area lights
 	for(int s = 0; s < lengths[0]; s++)
 	{
-		
+		Sphere sphere = spheres[sphereLightPointers[s]];
+		vec3 vecToCenter = sphere.center - hitPos;
+		//calculate random point on sphere, -vecToCenter because you want the closest points not the furthest points
+		vec3 randHemi = RandomDirection(-vecToCenter);
+		vec3 lightPos = sphere.center + randHemi * sphere.radius;
+		combinedColor += ContributionOfSingleLight(lightPos, sphere.emissionColor, hitColor, hitPos, hitNormal, rayDirection, hitSpecularColor, hitSpecularity, hitEmissionColor);
 	}
 	//determine lighting for all triangle area lights
-	for(int s = 0; s < lengths[1]; s++)
+	for(int t = 0; t < lengths[1]; t++)
 	{
-		
+		Triangle triangle = triangles[triangleLightPointers[t]];
+		vec3 center = (triangle.pointA + triangle.pointB + triangle.pointC) / 3.0f;
+		vec3 aVec = triangle.pointA - center;
+		vec3 bVec = triangle.pointB - center;
+		vec3 cVec = triangle.pointC - center;
+		vec2 rand1 = RandomNumber(0.0f);
+		vec2 rand2 = RandomNumber(100.0f);
+		vec3 lightPos = center + aVec * rand1.x + bVec * rand1.y + cVec * rand2.x;
+		vec3 vecToLight = normalize(lightPos - hitPos);
+		vec3 normal = triangle.normal;
+		if(dot(normal, vecToLight) < 0)
+			normal = -normal;
+		//triangle light shines less bright when at an angle/less chance to hit it at an angle 
+		combinedColor += ContributionOfSingleLight(lightPos, triangle.emissionColor, hitColor, hitPos, hitNormal, rayDirection, hitSpecularColor, hitSpecularity, hitEmissionColor) * dot(normal, vecToLight);
 	}
 	return combinedColor;
 }
-vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDirection, out vec3 intersectionNormal, out vec3 intersectionPos, out vec3 intersectionDiffuse, out vec3 intersectionSpecular, out float intersectionSpecularity, out bool hitSomething, out vec3 finalMirrorColorMultiplier)
+vec3 DetermineColorOfRay(in bool useEmissionColor, in float minDistance, in vec3 rayOrigin, in vec3 rayDirection, out vec3 intersectionNormal, out vec3 intersectionPos, out vec3 intersectionDiffuse, out vec3 intersectionSpecular, out float intersectionSpecularity, out bool hitSomething, out vec3 finalMirrorColorMultiplier)
 {
 	//t is the distance to the found intersections, it starts of as float.maxValue, because no intersection will ever return it. If t is this value, no intersections were found.
 	float t = 3.402823466e+38;
@@ -334,11 +330,11 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
 	vec3 finalColor = vec3(0, 0, 0);
 	int bounces = 0;
-	//only add the emission color for mirrors as area lights don't get checked indirectly
-	/**if(!hitPureSpecular)
+	//Always add the emission color for mirrors as area lights don't get checked indirectly via mirrors. If we add it for everything things will get counted double
+	if(hitPureSpecular)
 	{
-		hitEmissionColor = vec3(0, 0, 0);
-	}*/
+		useEmissionColor = true;
+	}
 	//Go into "recursion" to calculate mirror reflection
 	while (hitPureSpecular && bounces < maxBounces)
 	{
@@ -375,7 +371,7 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 		bounces++;
 	}
 	//if nothing got hit, return the color of the sky, t only changes if any of the primitives got hit by the viewray and t was instantiated to be float.maxValue
-	if (t == 3.402823466e+38)
+	if (t >= 3.402823466e+36)
 	{
 		hitSomething = false;
 		return finalColor + skyColor * mirrorColorMultiplier;
@@ -391,6 +387,8 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 	//determine location/position of the intersection
 	vec3 hitPos = rayOrigin + t * rayDirection;
 	
+	if(!useEmissionColor)
+		hitEmissionColor = vec3(0, 0, 0);
 	//adjust for mirrors
 	finalColor += DetermineLighting(hitColor, hitPos, hitNormal, rayDirection, hitSpecularColor, hitSpecularity, hitEmissionColor) * mirrorColorMultiplier;
 	
@@ -417,7 +415,8 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 	vec3 rayDirection = normalize((bottomLeft + (x / width) * (bottomRight - bottomLeft) + (y / height) * (topLeft - bottomLeft)) - rayOrigin);
 	vec3 hitNormal; vec3 hitPos; vec3 surfaceDiffuse; vec3 surfaceSpecular; float surfaceSpecularity; bool hitSomething;
 	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
-	vec3 combinedColor = DetermineColorOfRay(0, rayOrigin, rayDirection, hitNormal, hitPos, surfaceDiffuse, surfaceSpecular, surfaceSpecularity, hitSomething, mirrorColorMultiplier);
+	//always use emissionColor for primary rays
+	vec3 combinedColor = DetermineColorOfRay(true, 0, rayOrigin, rayDirection, hitNormal, hitPos, surfaceDiffuse, surfaceSpecular, surfaceSpecularity, hitSomething, mirrorColorMultiplier);
 	
 	//Calculate path tracing ray, doesn't work for more than 2 bounces yet
 	if(hitSomething)
@@ -425,23 +424,18 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 		vec3 shadowRayOrigin = hitPos;
 		vec3 shadowRayDirection = RandomDirection(hitNormal);
 		vec3 dummy; //we don't need to know the surface data of the found position as we regard it as a pointlight
+		//this value will become the hitPosition that is returned by DetermineColorOfRay
 		vec3 lightPos;
-		vec3 lightColor = DetermineColorOfRay(epsilon, shadowRayOrigin, shadowRayDirection, dummy, lightPos, dummy, dummy, dummy.x, hitSomething, dummy);
+		//don't use emissionColor for secondary rays to avoid counting area lights double
+		vec3 lightColor = DetermineColorOfRay(false, epsilon, shadowRayOrigin, shadowRayDirection, dummy, lightPos, dummy, dummy, dummy.x, hitSomething, dummy);
 		vec3 vectorToLight = lightPos - shadowRayOrigin;
 		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
 		vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
 		//formula for diffuse and specular components
-		combinedColor += mirrorColorMultiplier * 2.0f * (lightColor * (surfaceDiffuse * max(0, dot(hitNormal, shadowRayDirection)) + surfaceSpecular * pow(max(0, dot(rayDirection, vectorR)), surfaceSpecularity))) / max(1.3f, distanceToLightSquared);
+		combinedColor += mirrorColorMultiplier * 2.0f * (lightColor * (surfaceDiffuse * max(0, dot(hitNormal, shadowRayDirection)) + surfaceSpecular * pow(max(0, dot(rayDirection, vectorR)), surfaceSpecularity))) / max(0.8f, distanceToLightSquared);
 	}
 	return combinedColor;
 }
-
-//for testing random generators
-void OutputNoise()
-{
-	outputColor = vec4(RandomNumber(0.0f).xxx, 1.0f);
-}
-
 //This code will be run for each pixel on the screen
 void main()
 {
@@ -454,7 +448,8 @@ void main()
 		{
 			float planeX = gl_FragCoord.x - 0.5f + halfFraction + x * fraction;
 			float planeY = gl_FragCoord.y - 0.5f + halfFraction + y * fraction;
-			sumOfColors += CalculateColorOfPointOnCameraPlane(planeX, planeY);
+			vec3 col = CalculateColorOfPointOnCameraPlane(planeX, planeY);
+			sumOfColors += vec3(min(1, col.x), min(1, col.y), min(1, col.z));
 		}
 	}
 	vec3 averageColor = sumOfColors / (antiAliasingSamplesRoot * antiAliasingSamplesRoot);

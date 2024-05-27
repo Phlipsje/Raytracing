@@ -30,17 +30,15 @@ namespace INFOGR2024Template.Scenes
                 new Triangle(new Vector3(1.5f, 3f, 1.5f) * roomSize, new Vector3(-1.5f, 3f, 1.5f) * roomSize, new Vector3(-1.5f, 0f, 1.5f) * roomSize, new Material(Color4.White)),
                 new Triangle(new Vector3(1.5f, 3f, 1.5f) * roomSize, new Vector3(1.5f, 3f, -1.5f) * roomSize, new Vector3(-1.5f, 3f, -1.5f) * roomSize, new Material(Color4.White)),
                 new Triangle(new Vector3(-1.5f, 3f, 1.5f) * roomSize, new Vector3(1.5f, 3f, 1.5f) * roomSize, new Vector3(-1.5f, 3f, -1.5f) * roomSize, new Material(Color4.White)),
-                new Triangle(new Vector3(0.3f, 2.999f, 0.3f) * roomSize, new Vector3(0.3f, 2.999f, -0.3f) * roomSize, new Vector3(-0.3f, 2.999f, -0.3f) * roomSize, new Material(Color4.White)),
-                new Triangle(new Vector3(-0.3f, 2.999f, 0.3f) * roomSize, new Vector3(0.3f, 2.999f, 0.3f) * roomSize, new Vector3(-0.3f, 2.999f, -0.3f) * roomSize, new Material(Color4.White)),
-                new Sphere(new Vector3(0.75f, 1.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.White, 100f))
-                
-                
+                new Triangle(new Vector3(0.3f, 2.999f, 0.3f) * roomSize, new Vector3(0.3f, 2.999f, -0.3f) * roomSize, new Vector3(-0.3f, 2.999f, -0.3f) * roomSize, new Material(Color4.White, 10f)),
+                new Triangle(new Vector3(-0.3f, 2.999f, 0.3f) * roomSize, new Vector3(0.3f, 2.999f, 0.3f) * roomSize, new Vector3(-0.3f, 2.999f, -0.3f) * roomSize, new Material(Color4.White, 10f)),
+                new Sphere(new Vector3(0.75f, 1.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.White, 0f))
             };
             Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(0.5f, 0, 0), new Material(Color4.Red, Color4.LightGray, false, 100f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Black, new Color4(50, 50, 255, 255), true, 1f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise, Color4.White, false, 1f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, true, 0.01f))).ToList();
-            float lightStrength = 10f;
+            float lightStrength = 0f;
             PointLights = new List<PointLight>
             {
                 new PointLight(new Vector3(0f, 2.25f, 0f) * roomSize, new Color4(lightStrength, lightStrength, lightStrength, 1.0f)),
