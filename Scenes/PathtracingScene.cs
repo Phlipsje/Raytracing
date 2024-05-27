@@ -26,7 +26,8 @@ namespace INFOGR2024Template.Scenes
             };
             SpherePrimitives = new List<Sphere>
             {
-                new Sphere(new Vector3(0.75f, 1.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.White, 0f))
+                new Sphere(new Vector3(0.75f, 0.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.Black, Color4.Gray, true, 1f)),
+                new Sphere(new Vector3(-0.75f, 0.5f, 0.75f) * roomSize, 0.5f, new Material(Color4.Yellow,Color4.Gray, false, 50f))
             };
             TrianglePrimitives = new List<Triangle>
             {
