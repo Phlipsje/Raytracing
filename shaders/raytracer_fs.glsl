@@ -217,7 +217,7 @@ bool IntersectBoundingBox(vec3 rayOrigin, vec3 rayDirection, vec3 minValuesBB, v
 	return true;
 }
 //Gets the primitives that are useful for the calculation by means of an acceleration structure
-void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[100] spherePointers, out int triangleCount, out int[100] trianglePointers)
+void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out int sphereCount, out int[70] spherePointers, out int triangleCount, out int[70] trianglePointers)
 {
 	//Start using bounding box
 	StackClear(); //Clear just to be certain, but shouldn't be necessary in theory
@@ -226,9 +226,7 @@ void GetRelevantPrimitives(vec3 shadowRayOrigin, vec3 shadowRayDirection, out in
 	while(StackSize() > 0)
 	{
 		pos = StackPop();
-		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection,
-										vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]),
-										vec3(accStruct[pos+3], accStruct[pos+4], accStruct[pos+5]));
+		bool hit = IntersectBoundingBox(shadowRayOrigin, shadowRayDirection, vec3(accStruct[pos], accStruct[pos+1], accStruct[pos+2]), vec3(accStruct[pos+3], accStruct[pos+4], accStruct[pos+5]));
 		if(!hit)
 			continue;
 
@@ -567,9 +565,6 @@ void main()
 		}
 	}
 	vec3 averageColor = sumOfColors / (antiAliasingSamplesRoot * antiAliasingSamplesRoot);
-	/**outputColor = vec4(averageColor, 1);
-	return;*/
-	
 	//take last screen into account
 	vec3 oldAverage = lastScreen[int(gl_FragCoord.x) + int(gl_FragCoord.y) * int(camera[12])].xyz;
 	//averageColor = oldAverage * ((iterations - 1) / float(iterations)) + averageColor * (1.0f / iterations);
