@@ -20,7 +20,7 @@ namespace OpenTK
         int vertexArrayObject;
         int programID, vertexShaderID, fragmentShaderID;
         int attribute_vPosition;
-        int uniform_camera, uniform_ligths, uniform_lengths, uniform_time, uniform_iterations;
+        int uniform_camera, uniform_ligths, uniform_sphereLights, uniform_triangleLights, uniform_lengths, uniform_time, uniform_iterations;
         int ssbo_spheres, ssbo_planes, ssbo_triangles;
         float[] cameraData, lightsData;
         SphereStruct[] spheresData;
@@ -83,6 +83,8 @@ namespace OpenTK
             uniform_ligths = GL.GetUniformLocation(programID, "lights");
             uniform_time = GL.GetUniformLocation(programID, "time");
             uniform_iterations = GL.GetUniformLocation(programID, "iterations");
+            uniform_sphereLights = GL.GetUniformLocation(programID, "sphereLightPointers");
+            uniform_triangleLights = GL.GetUniformLocation(programID, "triangleLightPointers");
 
             Debug.WriteLine(GL.GetString(StringName.Vendor));
             Debug.WriteLine("ligthsLoc: " + uniform_ligths);
@@ -118,7 +120,6 @@ namespace OpenTK
             {
                 CameraMode = CameraMode.Debug2D;
             }
-            
             switch (CameraMode)
             {
                 case CameraMode.Debug2D:
@@ -1038,22 +1039,36 @@ namespace OpenTK
             int spheresAmount = 0;
             int planesAmount = 0;
             int trianglesAmount = 0;
+            int sphereLightsAmount = 0;
+            int triangleLightsAmount = 0;
             for (int i = 0; i < primitives.Count; i++)
             {
                 if (primitives[i] is Sphere)
+                {
                     spheresAmount++;
+                    if (primitives[i].Material.EmissionColor != Color4.Black)
+                        sphereLightsAmount++;
+                }
                 else if (primitives[i] is Plane)
                     planesAmount++;
                 else
+                {
                     trianglesAmount++;
+                    if (primitives[i].Material.EmissionColor != Color4.Black)
+                        triangleLightsAmount++;
+                }
             }
             spheresData = new SphereStruct[spheresAmount];
             planesData = new PlaneStruct[planesAmount];
             trianglesData = new TriangleStruct[trianglesAmount];
+            int[] sphereLightPointers = new int[sphereLightsAmount];
+            int[] triangleLightPointers = new int[triangleLightsAmount];
 
             int sphereCounter = 0;
             int planesCounter = 0;
             int trianglesCounter = 0;
+            int sphereLightsCounter = 0;
+            int triangleLightsCounter = 0;
             for (int i = 0; i < primitives.Count; i++)
             {
                 IPrimitive primitive = primitives[i];
@@ -1064,6 +1079,10 @@ namespace OpenTK
                     Vector3 specularColor = new Vector3(sphere.Material.SpecularColor.R, sphere.Material.SpecularColor.G, sphere.Material.SpecularColor.B);
                     Vector3 emissionColor = new Vector3(sphere.Material.EmissionColor.R, sphere.Material.EmissionColor.G, sphere.Material.EmissionColor.B);
                     spheresData[sphereCounter] = new SphereStruct(sphere.Center, sphere.Radius, diffuseColor, sphere.Material.IsPureSpecular, specularColor, sphere.Material.SpecularWidth, emissionColor);
+                    if (emissionColor != Vector3.Zero)
+                    {
+                        sphereLightPointers[sphereLightsCounter++] = sphereCounter;
+                    }
                     sphereCounter++;
                 }
                 else if (primitive is Plane)
@@ -1082,6 +1101,10 @@ namespace OpenTK
                     Vector3 specularColor = new Vector3(triangle.Material.SpecularColor.R, triangle.Material.SpecularColor.G, triangle.Material.SpecularColor.B);
                     Vector3 emissionColor = new Vector3(triangle.Material.EmissionColor.R, triangle.Material.EmissionColor.G, triangle.Material.EmissionColor.B);
                     trianglesData[trianglesCounter] = new TriangleStruct(triangle.PointA, triangle.PointB, triangle.PointC, triangle.Normal, diffuseColor, triangle.Material.IsPureSpecular, specularColor, triangle.Material.SpecularWidth, emissionColor);
+                    if (emissionColor != Vector3.Zero)
+                    {
+                        triangleLightPointers[triangleLightsCounter++] = trianglesCounter;
+                    }
                     trianglesCounter++;
                 }
             }
@@ -1100,7 +1123,7 @@ namespace OpenTK
             }
             int[] lengths = new int[]
             {
-                sphereCounter * 11, planesAmount * 13, trianglesAmount * 19, lightsData.Length
+                sphereLightsAmount, triangleLightsAmount, lightsData.Length
             };
             Vector4[] lastScreen = new Vector4[ScreenHelper.screen.width * ScreenHelper.screen.height];
             for (int i = 0; i < lastScreen.Length; i++)

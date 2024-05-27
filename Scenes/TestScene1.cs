@@ -22,14 +22,14 @@ namespace INFOGR2024Template.Scenes
                 new Sphere(new Vector3(0f, 1f, 2f), 1f, new Material(Color4.Black, Color4.Gray, true, 100f)),
                 new Sphere(new Vector3(-1, 0.3f, -1f), 0.3f, new Material(Color4.Gold, Color4.LightGray, false, 50f)),
                 new Sphere(new Vector3(-2, 0.8f, -2), 0.8f, new Material(Color4.Purple, Color4.Purple, false, 15f)),
-                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.DimGray, Color4.LightGray, true, 1f)),
+                new Plane(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Material(Color4.White, Color4.Black, false, 1f)),
                 new Sphere(new Vector3(-1, 0.5f, 0) + offset, 0.5f, new Material(Color4.Red, Color4.Gray, false, 50f)),
                 new Sphere(new Vector3(0f, 1f, 2f) + offset, 1f, new Material(Color4.DeepPink, Color4.LightGray, false, 50f)),
                 new Sphere(new Vector3(-1, 0.3f, -1f) + offset, 0.3f, new Material(Color4.Yellow, Color4.LightGray, false, 100f)),
                 new Sphere(new Vector3(-2, 0.8f, -2) + offset, 0.8f, new Material(Color4.Black, Color4.LightGray, true, 5f)),
             };
             Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("cube"), 0.02f, new Vector3(3, 0, 1), new Material(Color4.Gold, Color4.Gold, true, 1f))).ToList();
-            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Black, new Color4(50, 50, 255, 255), true, 1f))).ToList();
+            Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.03f, new Vector3(1, 0, 0), new Material(Color4.Black, new Color4(0, 0, 255, 255), true, 1f))).ToList();
             Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("pyramid"), 0.05f, new Vector3(3, 0, -2), new Material(Color4.Turquoise, Color4.White, false, 1f))).ToList();
             //Primitives = Primitives.Concat(OBJImportHelper.ImportModel(OBJImportHelper.FilePath("teapot"), 0.03f, new Vector3(0, 2, 5), new Material(Color4.Beige, Color4.Gray, true, 0.01f))).ToList();
             float lampExtraDistance = 10f;

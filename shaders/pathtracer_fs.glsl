@@ -19,16 +19,14 @@ const int pathTracingBounces = 2;
 int randomsUsed = 0;
 
 out vec4 outputColor;
-//max 50 lights
-uniform float[300] lights;
-//max 50 triangleLights;
-uniform int[50] triangleLightPointers;
 //max 50 sphereLights;
 uniform int[50] sphereLightPointers;
-//max 50 planeLights
-uniform int[50] planeLightPointers;
-//the lengths of each of the primitive arrays, in same order as they are declared
-uniform int[4] lengths;
+//max 50 triangleLights;
+uniform int[50] triangleLightPointers;
+//max 50 point lights
+uniform float[300] lights;
+//the lengths the light arrays in the same order as declared
+uniform int[3] lengths;
 //Position: first three floats xyz. BottomleftPlane: 4th to 6th float. BottomRightPlane: 7th to 9th float. TopLeftPlane: 10th to 12th float. ScreenSize: last two floats
 uniform float[14] camera;
 //The time since the program started
@@ -269,7 +267,53 @@ void FindClosestIntersection(in vec3 rayOrigin, in vec3 rayDirection, in float m
 		}
 	}
 }
-vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDirection, out vec3 intersectionNormal, out vec3 intersectionPos, out vec3 intersectionDiffuse, out vec3 intersectionSpecular, out float intersectionSpecularity, out bool hitSomething)
+vec3 DetermineLighting(in vec3 hitColor, in vec3 hitPos, inout vec3 hitNormal, vec3 rayDirection, vec3 hitSpecularColor, float hitSpecularity, vec3 hitEmissionColor)
+{
+	vec3 combinedColor = vec3(hitColor * ambiantLight + hitEmissionColor);
+	//determine lighting for all pointLights
+	for (int l = 0; l < lengths[2]; l += 6)
+	{
+		vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
+		vec3 vectorToLight = lightPos - hitPos;
+		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
+		vec3 shadowRayOrigin = hitPos;
+		vec3 shadowRayDirection = normalize(lightPos - hitPos);
+		//make sure normal is right way around
+		if (dot(hitNormal, rayDirection) > 0.0f)
+			hitNormal = -hitNormal;
+		//skip light if on wrong side of object
+		if(dot(hitNormal, shadowRayDirection) < 0.0f)
+			continue;
+		//if no objects were in the way of the light, add the appropriate lighting to it.
+		if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
+		{
+			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
+			if(hitSpecularColor == vec3(0, 0, 0))
+			{
+				//formula for diffuse component
+				combinedColor += (lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection))) / distanceToLightSquared;
+			}
+			else
+			{
+				vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
+				//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
+				combinedColor += (lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity))) / distanceToLightSquared;
+			}
+		}
+	}
+	//determine lighting for all sphere area lights
+	for(int s = 0; s < lengths[0]; s++)
+	{
+		
+	}
+	//determine lighting for all triangle area lights
+	for(int s = 0; s < lengths[1]; s++)
+	{
+		
+	}
+	return combinedColor;
+}
+vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDirection, out vec3 intersectionNormal, out vec3 intersectionPos, out vec3 intersectionDiffuse, out vec3 intersectionSpecular, out float intersectionSpecularity, out bool hitSomething, out vec3 finalMirrorColorMultiplier)
 {
 	//t is the distance to the found intersections, it starts of as float.maxValue, because no intersection will ever return it. If t is this value, no intersections were found.
 	float t = 3.402823466e+38;
@@ -290,6 +334,11 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
 	vec3 finalColor = vec3(0, 0, 0);
 	int bounces = 0;
+	//only add the emission color for mirrors as area lights don't get checked indirectly
+	/**if(!hitPureSpecular)
+	{
+		hitEmissionColor = vec3(0, 0, 0);
+	}*/
 	//Go into "recursion" to calculate mirror reflection
 	while (hitPureSpecular && bounces < maxBounces)
 	{
@@ -299,23 +348,8 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 		//calculate diffuse component of lighting on previous found intersection, check for black diffuse first as this calculation is expensive and a lot of mirrors have black diffuse
 		if (hitColor != vec3(0, 0, 0))
 		{
-			vec3 combinedColor = vec3(hitColor * ambiantLight);
-			for (int l = 0; l < lengths[3]; l += 6)
-			{
-				vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
-				vec3 vectorToLight = lightPos - hitPos;
-				float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
-				vec3 shadowRayOrigin = hitPos;
-				vec3 shadowRayDirection = normalize(lightPos - hitPos);
-				//if no objects were in the way of the light, add the appropriate lighting to it.
-				if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
-				{
-					vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
-					//formula for diffuse component, the specular component will be the pure specular component, which is calculated in a different way, as we are sure the current object is pureSpecular
-					combinedColor += (lightColor * hitColor * max(0, dot(hitNormal, shadowRayDirection))) / distanceToLightSquared;
-				}
-			}
-			finalColor += combinedColor * mirrorColorMultiplier;
+			//only calculate diffuse, the specular component will be the pure specular component, which is calculated in a different way, as we are sure the current object is pureSpecular
+			finalColor += DetermineLighting(hitColor, hitPos, hitNormal, rayDirection, vec3(0,0,0), 0.0f, vec3(0,0,0)) * mirrorColorMultiplier;
 		}
 
 		//setup for next ray 
@@ -356,38 +390,16 @@ vec3 DetermineColorOfRay(in float minDistance, in vec3 rayOrigin, in vec3 rayDir
 	//FOLLOWING SECTION: calculate lighting of point on closest object
 	//determine location/position of the intersection
 	vec3 hitPos = rayOrigin + t * rayDirection;
-	//combinedColor is the color the pixel will eventually be, each component can be added seperately and the ambient lighting will always be applied so it can happen now.
-	vec3 combinedColor = vec3(hitColor * ambiantLight + hitEmissionColor);
-	//Calculate the lighting on the found intersection for each light in the scene:
-	for (int l = 0; l < lengths[3]; l += 6)
-	{
-		vec3 lightPos = vec3(lights[l], lights[l + 1], lights[l + 2]);
-		vec3 vectorToLight = lightPos - hitPos;
-		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
-		vec3 shadowRayOrigin = hitPos;
-		vec3 shadowRayDirection = normalize(lightPos - hitPos);
-		//make sure normal is right way around
-		if (dot(hitNormal, rayDirection) > 0.0f)
-			hitNormal = -hitNormal;
-		//skip light if on wrong side of object
-		if(dot(hitNormal, shadowRayDirection) < 0.0f)
-			continue;
-		//if no objects were in the way of the light, add the appropriate lighting to it.
-		if (!ObjectInWayOfLight(distanceToLightSquared, shadowRayOrigin, shadowRayDirection))
-		{
-			vec3 lightColor = vec3(lights[l + 3], lights[l + 4], lights[l + 5]);
-			vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
-			//formula for diffuse and specular components, add it to the combined color as this happens for each light and we want the sum of the effects
-			combinedColor += (lightColor * (hitColor * max(0, dot(hitNormal, shadowRayDirection)) + hitSpecularColor * pow(max(0, dot(rayDirection, vectorR)), hitSpecularity))) / distanceToLightSquared;
-		}
-	}
+	
 	//adjust for mirrors
-	finalColor += combinedColor * mirrorColorMultiplier;
+	finalColor += DetermineLighting(hitColor, hitPos, hitNormal, rayDirection, hitSpecularColor, hitSpecularity, hitEmissionColor) * mirrorColorMultiplier;
+	
 	intersectionNormal = hitNormal;
 	intersectionPos = hitPos;
 	intersectionDiffuse = hitColor;
 	intersectionSpecular = hitSpecularColor;
 	intersectionSpecularity = hitSpecularity;
+	finalMirrorColorMultiplier = mirrorColorMultiplier;
 	hitSomething = true;
 	return finalColor;
 }
@@ -404,7 +416,8 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 	vec3 rayOrigin = vec3(camera[0], camera[1], camera[2]);
 	vec3 rayDirection = normalize((bottomLeft + (x / width) * (bottomRight - bottomLeft) + (y / height) * (topLeft - bottomLeft)) - rayOrigin);
 	vec3 hitNormal; vec3 hitPos; vec3 surfaceDiffuse; vec3 surfaceSpecular; float surfaceSpecularity; bool hitSomething;
-	vec3 combinedColor = DetermineColorOfRay(0, rayOrigin, rayDirection, hitNormal, hitPos, surfaceDiffuse, surfaceSpecular, surfaceSpecularity, hitSomething);
+	vec3 mirrorColorMultiplier = vec3(1, 1, 1);
+	vec3 combinedColor = DetermineColorOfRay(0, rayOrigin, rayDirection, hitNormal, hitPos, surfaceDiffuse, surfaceSpecular, surfaceSpecularity, hitSomething, mirrorColorMultiplier);
 	
 	//Calculate path tracing ray, doesn't work for more than 2 bounces yet
 	if(hitSomething)
@@ -413,12 +426,12 @@ vec3 CalculateColorOfPointOnCameraPlane(in float x, in float y)
 		vec3 shadowRayDirection = RandomDirection(hitNormal);
 		vec3 dummy; //we don't need to know the surface data of the found position as we regard it as a pointlight
 		vec3 lightPos;
-		vec3 lightColor = DetermineColorOfRay(epsilon, shadowRayOrigin, shadowRayDirection, dummy, lightPos, dummy, dummy, dummy.x, hitSomething);
+		vec3 lightColor = DetermineColorOfRay(epsilon, shadowRayOrigin, shadowRayDirection, dummy, lightPos, dummy, dummy, dummy.x, hitSomething, dummy);
 		vec3 vectorToLight = lightPos - shadowRayOrigin;
 		float distanceToLightSquared = vectorToLight.x * vectorToLight.x + vectorToLight.y * vectorToLight.y + vectorToLight.z * vectorToLight.z;
 		vec3 vectorR = normalize(shadowRayDirection - 2 * dot(shadowRayDirection, hitNormal) * hitNormal);
 		//formula for diffuse and specular components
-		combinedColor += 5.0f * (lightColor * (surfaceDiffuse * max(0, dot(hitNormal, shadowRayDirection)) + surfaceSpecular * pow(max(0, dot(rayDirection, vectorR)), surfaceSpecularity))) / max(1.3f, distanceToLightSquared);
+		combinedColor += mirrorColorMultiplier * 2.0f * (lightColor * (surfaceDiffuse * max(0, dot(hitNormal, shadowRayDirection)) + surfaceSpecular * pow(max(0, dot(rayDirection, vectorR)), surfaceSpecularity))) / max(1.3f, distanceToLightSquared);
 	}
 	return combinedColor;
 }
